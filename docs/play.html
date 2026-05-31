@@ -872,6 +872,7 @@
     masterGain = actx.createGain();
     masterGain.gain.value = muted ? 0 : 0.9;
     masterGain.connect(actx.destination);
+    loadSfx();
   }
   function setMasterMute() {
     if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
@@ -920,6 +921,40 @@
   }
   function stopMusic() {
     if (bgmEl) bgmEl.pause(); // 위치 유지 → 다음 시작 때 이어듣기
+  }
+
+  // ---------- 효과음 샘플(파일) ----------
+  // 공이 바닥에 떨어질 때 — bubbles-single2.wav (실패음). 짧아서 Web Audio 버퍼로 디코드.
+  let sfxFallBuf = null;
+  function loadSfx() {
+    if (!actx || sfxFallBuf) return;
+    fetch('music/bubbles-single2.wav')
+      .then((r) => r.arrayBuffer())
+      .then((a) => actx.decodeAudioData(a))
+      .then((buf) => { sfxFallBuf = buf; })
+      .catch(() => {}); // 실패 시 아래 합성 낙하음으로 폴백
+  }
+  function playFall() {
+    if (!actx || muted) return;
+    if (sfxFallBuf) { // 업로드한 wav 재생
+      const src = actx.createBufferSource();
+      src.buffer = sfxFallBuf;
+      const g = actx.createGain();
+      g.gain.value = 0.9;
+      src.connect(g); g.connect(masterGain); src.start();
+      return;
+    }
+    // 폴백: 샘플 로드 전이면 기존 합성 낙하음(하강 톱니파)
+    const t = actx.currentTime;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(320, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.28);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.35);
   }
 
   function playBoing(freq, pan) {
@@ -1479,18 +1514,7 @@
     flashAlpha = Math.max(flashAlpha, 0.5);
     shake = 14;
     vibrate([30, 40, 30]);
-    if (actx && !muted) {
-      const t = actx.currentTime;
-      const o = actx.createOscillator();
-      const g = actx.createGain();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(320, t);
-      o.frequency.exponentialRampToValueAtTime(90, t + 0.28);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
-      o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.35);
-    }
+    playFall();
   }
 
   // ---------- 업데이트 ----------
