@@ -89,13 +89,6 @@
   }
   @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  .blind-banner {
-    position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + var(--spacing-md));
-    left: 0; right: 0; text-align: center; color: var(--text-secondary);
-    font-size: var(--font-sm); z-index: 6; pointer-events: none; opacity: 0.7;
-  }
-  .blind-banner.hidden { display: none; }
-
   /* ===== 상단 버튼(일시정지·상점) ===== */
   .corner-btn {
     position: fixed; top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md));
@@ -170,8 +163,6 @@
   </div>
 </div>
 
-<div class="blind-banner hidden" id="blindBanner">눈 감고 치기 — 소리·진동으로 위치를 느끼세요</div>
-
 <!-- 메뉴 -->
 <div class="overlay" id="menu">
   <h1 class="title">튕기기</h1>
@@ -180,7 +171,6 @@
   <button class="btn btn-primary" id="startBtn">게임 시작</button>
   <div class="toggles">
     <button class="btn btn-ghost" id="shopBtn">상점</button>
-    <button class="btn btn-ghost" id="blindToggle" aria-pressed="false">눈 감고 치기 끄기</button>
     <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
   </div>
 </div>
@@ -201,6 +191,7 @@
   <div class="shop-grid hidden" id="gridItems"></div>
   <button class="btn btn-primary" id="shopBack">닫기</button>
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
+  <input type="file" id="photoBallInput" accept="image/*" style="display:none" />
 </div>
 
 <!-- 일시정지 -->

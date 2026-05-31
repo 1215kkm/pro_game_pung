@@ -142,13 +142,6 @@
   }
   @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-  .blind-banner {
-    position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + var(--spacing-md));
-    left: 0; right: 0; text-align: center; color: var(--text-secondary);
-    font-size: var(--font-sm); z-index: 6; pointer-events: none; opacity: 0.7;
-  }
-  .blind-banner.hidden { display: none; }
-
   /* ===== 상단 버튼(일시정지·상점) ===== */
   .corner-btn {
     position: fixed; top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md));
@@ -223,8 +216,6 @@
   </div>
 </div>
 
-<div class="blind-banner hidden" id="blindBanner">눈 감고 치기 — 소리·진동으로 위치를 느끼세요</div>
-
 <!-- 메뉴 -->
 <div class="overlay" id="menu">
   <h1 class="title">튕기기</h1>
@@ -233,7 +224,6 @@
   <button class="btn btn-primary" id="startBtn">게임 시작</button>
   <div class="toggles">
     <button class="btn btn-ghost" id="shopBtn">상점</button>
-    <button class="btn btn-ghost" id="blindToggle" aria-pressed="false">눈 감고 치기 끄기</button>
     <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
   </div>
 </div>
@@ -254,6 +244,7 @@
   <div class="shop-grid hidden" id="gridItems"></div>
   <button class="btn btn-primary" id="shopBack">닫기</button>
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
+  <input type="file" id="photoBallInput" accept="image/*" style="display:none" />
 </div>
 
 <!-- 일시정지 -->
@@ -331,7 +322,6 @@
   const elMenu = $('menu');
   const elMenuBest = $('menuBest');
   const elStart = $('startBtn');
-  const elBlindToggle = $('blindToggle');
   const elMuteToggle = $('muteToggle');
   const elGameover = $('gameover');
   const elNewRecord = $('newRecordBadge');
@@ -340,7 +330,6 @@
   const elRetry = $('retryBtn');
   const elShare = $('shareBtn');
   const elMenuBtn = $('menuBtn');
-  const elBlindBanner = $('blindBanner');
   const elWin = $('winScreen');
   const elWinCombo = $('winCombo');
   const elWinRetry = $('winRetryBtn');
@@ -359,6 +348,7 @@
   const elGridItems = $('gridItems');
   const elShopBack = $('shopBack');
   const elPhotoInput = $('photoInput');
+  const elPhotoBallInput = $('photoBallInput');
   const elPauseBtn = $('pauseBtn');
   const elPause = $('pause');
   const elPauseResume = $('pauseResume');
@@ -448,7 +438,6 @@
 
   let best = 1;                   // 최고 도달 판수
   let muted = false;
-  let blindMode = false;
 
   // 게임 변수
   let stage, catchesInStage, combo, maxCombo, slowFactor, slowTimer, zenActive, zenScored;
@@ -507,6 +496,7 @@
     equipped: { skin: 'default', bg: 'default' },
     sticks: 0,
     photo: null,
+    photoBall: null,
   };
   let store = JSON.parse(JSON.stringify(STORE_DEFAULT));
   let coins = 0;
@@ -534,6 +524,7 @@
           },
           sticks: parsed.sticks | 0,
           photo: parsed.photo || null,
+          photoBall: parsed.photoBall || null,
         };
         if (store.owned.skins.indexOf('default') < 0) store.owned.skins.push('default');
         if (store.owned.bgs.indexOf('default') < 0) store.owned.bgs.push('default');
@@ -545,7 +536,7 @@
     try { localStorage.setItem('pung_store', JSON.stringify(store)); }
     catch (e) {
       // quota 초과: 사진 제거 후 1회 재시도
-      try { store.photo = null; localStorage.setItem('pung_store', JSON.stringify(store)); }
+      try { store.photo = null; store.photoBall = null; localStorage.setItem('pung_store', JSON.stringify(store)); }
       catch (e2) { /* 그래도 실패하면 포기(메모리에는 유지) */ }
     }
   }
@@ -724,6 +715,39 @@
     c.closePath(); c.fill();
   }
 
+  // ----- 공 사진 스킨(원형 클립) -----
+  let photoBallImg = null;        // 공 사진 캐시(배경 photo 와 독립)
+  function loadPhotoBallImage() {
+    photoBallImg = null;
+    if (!store.photoBall) return;
+    const img = new Image();
+    img.onload = () => { photoBallImg = img; };
+    img.src = store.photoBall;
+  }
+  loadPhotoBallImage();
+
+  function drawSkin_photoBall(c, x, y, r, phase) {
+    if (photoBallImg && photoBallImg.width) {
+      c.save();
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.clip();
+      // cover 핏: 정사각 영역(2r×2r)을 채우게
+      const iw = photoBallImg.width, ih = photoBallImg.height;
+      const ir = iw / ih;
+      let dw, dh;
+      if (ir > 1) { dh = r * 2; dw = dh * ir; } else { dw = r * 2; dh = dw / ir; }
+      c.drawImage(photoBallImg, x - dw / 2, y - dh / 2, dw, dh);
+      c.restore();
+    } else {
+      // 플레이스홀더: 회색 원 + 안내
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+      c.fillStyle = '#3A3C44'; c.fill();
+      c.fillStyle = '#9CA3AF';
+      c.font = '600 ' + Math.round(r * 0.3) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('사진 추가', x, y);
+    }
+  }
+
   const SKINS = [
     { id: 'default', name: '기본 굴절공', price: 0, draw: drawDefaultSkin },
     { id: 'soccer', name: '축구공', price: 30, draw: drawSoccerSkin },
@@ -731,6 +755,7 @@
     { id: 'jupiter', name: '목성', price: 60, draw: drawJupiterSkin },
     { id: 'saturn', name: '토성', price: 80, draw: drawSaturnSkin },
     { id: 'penguin', name: '펭귄', price: 100, draw: drawPenguinSkin },
+    { id: 'photoBall', name: '내 사진', price: 120, draw: drawSkin_photoBall },
   ];
   function skinById(id) { return SKINS.find((s) => s.id === id) || SKINS[0]; }
 
@@ -1100,7 +1125,6 @@
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
-    elBlindBanner.classList.toggle('hidden', !blindMode);
     renderStickTray();
     updateHud();
     startMusic();
@@ -1111,7 +1135,6 @@
   function hidePlayChrome() {
     elHud.classList.add('hidden');
     elHud.setAttribute('aria-hidden', 'true');
-    elBlindBanner.classList.add('hidden');
     elPauseBtn.classList.add('hidden');
     elStickTray.classList.add('hidden');
   }
@@ -1154,7 +1177,6 @@
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
-    elBlindBanner.classList.toggle('hidden', !blindMode);
     renderStickTray();
     updateHud();
     startMusic();
@@ -1233,11 +1255,12 @@
     return base * (1 + heightFactor * 0.18);
   }
 
-  // 코인 지급(1터짐=1코인, 5개째마다 축하)
+  // 코인 지급(판 난이도 비례). 5터짐마다 축하 토스트(터짐 횟수 기준).
   function awardCoin() {
-    addCoins(1);
+    const gain = 1 + Math.floor(stage / 3) + (masterMode ? Math.max(0, stage - TOTAL_STAGES) : 0);
+    addCoins(gain);
     popsThisRun += 1;
-    if (popsThisRun % 5 === 0) showToast('+5 코인! 🪙');
+    if (popsThisRun % 5 === 0) showToast('+' + gain + ' 코인! 🪙');
   }
 
   // 큰 버스트 파티클(스킨색→흰색) + 링 충격파
@@ -1316,7 +1339,7 @@
       vibrate([20, 40, 20]);
       slowTimer = Math.min(slowTimer, 0.25);
     } else if (!paddleHit) {
-      vibrate(blindMode ? 30 : 15);
+      vibrate(15);
     }
 
     progressStage(zenBonus);
@@ -1376,7 +1399,7 @@
       if (b.vy < -80) continue;
       const d = Math.hypot(px - b.x, py - b.y);
       const hitR = b.r + 36;
-      if (d < hitR || blindMode) { if (d < bestD) { bestD = d; target = b; } }
+      if (d < hitR) { if (d < bestD) { bestD = d; target = b; } }
     }
     if (target) {
       if (hitSet) hitSet.add(target.id);
@@ -1687,20 +1710,15 @@
     drawBackground();
 
     if (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT) {
-      if (blindMode && state === STATE.PLAYING) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(-20, -20, W + 40, H + 40);
-      } else {
-        drawZone();
-        drawParticles();
-        drawBalls();
-        drawPaddle();
-        drawComboFloat();
-      }
+      drawZone();
+      drawParticles();
+      drawBalls();
+      drawPaddle();
+      drawComboFloat();
       if (slowFactor < 1 && state === STATE.PLAYING) {
         ctx.fillStyle = SHADE.zenDim;
         ctx.fillRect(-20, -20, W + 40, H + 40);
-        if (!blindMode) { drawBalls(); drawPaddle(); drawComboFloat(); }
+        drawBalls(); drawPaddle(); drawComboFloat();
       }
       if (flashAlpha > 0.01) {
         ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha.toFixed(3) + ')';
@@ -1863,6 +1881,24 @@
         skin.draw(c, cw / 2, ch / 2, cw * 0.36, 0.6);
       });
       const card = buildCard(prev, skin.name, owned, equipped, skin.price, () => {
+        if (skin.id === 'photoBall') {
+          // 사진 공: 소유 전이면 구매 후, 사진 없으면 파일 선택부터
+          if (!owned) {
+            if (!buy('skins', skin.id, skin.price)) { showShopMsg('코인이 부족해요'); return; }
+            equip('skin', skin.id);
+            if (!store.photoBall) { elPhotoBallInput.click(); renderShop(); return; }
+          } else if (!store.photoBall) {
+            equip('skin', skin.id);
+            elPhotoBallInput.click(); renderShop(); return;
+          } else if (!equipped) {
+            equip('skin', skin.id);
+          } else {
+            // 이미 장착됨 → 사진 교체
+            elPhotoBallInput.click(); return;
+          }
+          renderShop();
+          return;
+        }
         if (equipped) return;
         if (owned) { equip('skin', skin.id); }
         else { if (!buy('skins', skin.id, skin.price)) { showShopMsg('코인이 부족해요'); return; } equip('skin', skin.id); }
@@ -2000,6 +2036,35 @@
     e.target.value = '';
   }
 
+  // 공 사진 업로드 → 정사각 크롭 다운스케일(최대 512) → store.photoBall
+  function onPhotoBallSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 512;
+        const side = Math.min(img.width, img.height);   // 정사각 크롭(중앙)
+        const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+        const out = Math.min(maxDim, side);
+        const cv = document.createElement('canvas');
+        cv.width = out; cv.height = out;
+        cv.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, out, out);
+        let dataUrl;
+        try { dataUrl = cv.toDataURL('image/jpeg', 0.8); } catch (err) { showShopMsg('사진을 읽지 못했어요'); return; }
+        store.photoBall = dataUrl;
+        saveStore();
+        if (!store.photoBall) { showShopMsg('사진 용량 초과 — 더 작은 사진을'); }
+        loadPhotoBallImage();
+        renderShop();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   // ================= 스틱 트레이 (게임 중) =================
   function renderStickTray() {
     const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
@@ -2030,8 +2095,6 @@
 
   // ---------- UI 바인딩 ----------
   function refreshToggleLabels() {
-    elBlindToggle.textContent = blindMode ? '눈 감고 치기 켜짐' : '눈 감고 치기 끄기';
-    elBlindToggle.setAttribute('aria-pressed', String(blindMode));
     elMuteToggle.textContent = muted ? '소리 꺼짐' : '소리 켜짐';
     elMuteToggle.setAttribute('aria-pressed', String(muted));
   }
@@ -2044,10 +2107,6 @@
   elWinMenu.addEventListener('click', toMenu);
   elWinShare.addEventListener('click', shareResult);
   if (elWinMaster) elWinMaster.addEventListener('click', enterMasterMode);
-  elBlindToggle.addEventListener('click', () => {
-    blindMode = !blindMode; refreshToggleLabels();
-    if (state === STATE.PLAYING) elBlindBanner.classList.toggle('hidden', !blindMode);
-  });
   elMuteToggle.addEventListener('click', () => {
     muted = !muted; ensureAudio(); setMasterMute(); refreshToggleLabels();
   });
@@ -2060,6 +2119,7 @@
   elTabBgs.addEventListener('click', () => showTab('bgs'));
   elTabItems.addEventListener('click', () => showTab('items'));
   elPhotoInput.addEventListener('change', onPhotoSelected);
+  elPhotoBallInput.addEventListener('change', onPhotoBallSelected);
 
   // 일시정지
   elPauseBtn.addEventListener('click', pauseGame);
