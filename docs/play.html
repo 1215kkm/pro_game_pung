@@ -110,6 +110,16 @@
   .subtitle { font-size: var(--font-md); color: var(--text-secondary); margin: 0; max-width: 320px; line-height: 1.6; }
   .best { font-size: var(--font-lg); color: var(--secondary); font-weight: 700; }
 
+  /* 크레딧 */
+  .credits-list { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: var(--spacing-md); max-height: 60vh; overflow-y: auto; }
+  .credits-head { font-size: var(--font-sm); color: var(--text-secondary); margin: 0 0 4px; line-height: 1.5; }
+  .credits-head a { color: var(--secondary); }
+  .credits-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; padding: 10px 12px; background: rgba(255,255,255,0.05); border-radius: var(--radius-md); text-align: left; }
+  .credits-title { font-weight: 700; color: var(--text-primary); }
+  .credits-by { font-size: var(--font-sm); color: var(--text-secondary); }
+  .credits-link { margin-left: auto; font-size: var(--font-sm); color: var(--secondary); white-space: nowrap; }
+  .credits-note { font-size: var(--font-xs, 12px); color: var(--text-secondary); margin: 4px 0 0; line-height: 1.6; }
+
   .btn {
     border: none; cursor: pointer; font-family: inherit; font-weight: 600;
     border-radius: var(--radius-md); padding: 14px 28px; font-size: var(--font-md);
@@ -228,6 +238,7 @@
   <div class="toggles">
     <button class="btn btn-ghost" id="shopBtn">상점</button>
     <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
+    <button class="btn btn-ghost" id="creditsBtn">크레딧</button>
   </div>
 </div>
 
@@ -296,6 +307,31 @@
   </div>
 </div>
 
+<!-- 크레딧(출처 표시) -->
+<div class="overlay hidden" id="credits">
+  <h2 class="title" style="font-size:var(--font-2xl)">크레딧</h2>
+  <div class="credits-list">
+    <p class="credits-head">배경 음악 — <a href="https://opengameart.org" target="_blank" rel="noopener">OpenGameArt.org</a> · 라이선스 CC&#8209;BY&nbsp;3.0</p>
+    <div class="credits-item">
+      <span class="credits-title">Fun Adventure</span>
+      <span class="credits-by">by Hitctrl</span>
+      <a class="credits-link" href="https://opengameart.org/content/fun-background" target="_blank" rel="noopener">출처</a>
+    </div>
+    <div class="credits-item">
+      <span class="credits-title">Fun BGM</span>
+      <span class="credits-by">by syncopika</span>
+      <a class="credits-link" href="https://opengameart.org/users/syncopika" target="_blank" rel="noopener">출처</a>
+    </div>
+    <div class="credits-item">
+      <span class="credits-title">Selections from BGM Fun Vol.7</span>
+      <span class="credits-by">by syncopika</span>
+      <a class="credits-link" href="https://opengameart.org/users/syncopika" target="_blank" rel="noopener">출처</a>
+    </div>
+    <p class="credits-note">CC&#8209;BY&nbsp;3.0 — 상업적 사용 가능, 저작자 표시 필수.<br>저작권/표시: Hitctrl, syncopika.</p>
+  </div>
+  <button class="btn btn-primary" id="creditsBack">닫기</button>
+</div>
+
 <script>
 /* inlined from game.js */
 /* 튕기기 — 30판 정복 + 무한 마스터모드 + 상점/스킨/배경/막대기.
@@ -352,6 +388,9 @@
   const elGridBgs = $('gridBgs');
   const elGridItems = $('gridItems');
   const elShopBack = $('shopBack');
+  const elCredits = $('credits');
+  const elCreditsBtn = $('creditsBtn');
+  const elCreditsBack = $('creditsBack');
   const elPhotoInput = $('photoInput');
   const elPhotoBallInput = $('photoBallInput');
   const elPauseBtn = $('pauseBtn');
@@ -1237,6 +1276,7 @@
     elShop.classList.add('hidden');
     elPause.classList.add('hidden');
     elCheckpoint.classList.add('hidden');
+    elCredits.classList.add('hidden');
     hidePlayChrome();
     elMenu.classList.remove('hidden');
     elMenuBest.textContent = '최고 도달 ' + best + '판';
@@ -2169,6 +2209,8 @@
   elShopBtn.addEventListener('click', () => openShop(false));
   elPauseShopBtn.addEventListener('click', () => openShop(true));
   elShopBack.addEventListener('click', closeShop);
+  elCreditsBtn.addEventListener('click', () => { elMenu.classList.add('hidden'); elCredits.classList.remove('hidden'); });
+  elCreditsBack.addEventListener('click', () => { elCredits.classList.add('hidden'); elMenu.classList.remove('hidden'); });
   elTabBalls.addEventListener('click', () => showTab('balls'));
   elTabBgs.addEventListener('click', () => showTab('bgs'));
   elTabItems.addEventListener('click', () => showTab('items'));
