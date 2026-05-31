@@ -20,6 +20,7 @@
   const elHudStage = $('hudStage');
   const elHudOf = $('hudOf');
   const elHudCombo = $('hudCombo');
+  const elHudCoins = $('hudCoins');
   const elHudBest = $('hudBest');
   const elHudLives = $('hudLives');
   const elMenu = $('menu');
@@ -31,6 +32,7 @@
   const elFinalScore = $('finalScore');
   const elGoBest = $('goBest');
   const elRetry = $('retryBtn');
+  const elResume = $('resumeBtn');
   const elShare = $('shareBtn');
   const elMenuBtn = $('menuBtn');
   const elWin = $('winScreen');
@@ -62,7 +64,6 @@
   const elCpContinue = $('cpContinue');
   const elCpStop = $('cpStop');
   const elStickTray = $('stickTray');
-  const elStickMerge = $('stickMerge');
 
   // ---------- 브랜드 색 (CSS 변수에서 읽음) ----------
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -207,6 +208,12 @@
   try { best = parseInt(localStorage.getItem('pung_best_stage') || '1', 10) || 1; } catch (e) { best = 1; }
   if (best < 1) best = 1;
   function saveBest() { try { localStorage.setItem('pung_best_stage', String(best)); } catch (e) { /* 프라이빗 모드 */ } }
+
+  // 게임오버 시점의 도달 판(이어하기용)
+  let resumeStage = 1;
+  try { resumeStage = parseInt(localStorage.getItem('pung_resume_stage') || '1', 10) || 1; } catch (e) { resumeStage = 1; }
+  if (resumeStage < 1) resumeStage = 1;
+  function saveResumeStage() { try { localStorage.setItem('pung_resume_stage', String(resumeStage)); } catch (e) { /* 프라이빗 모드 */ } }
 
   function loadStore() {
     try { coins = parseInt(localStorage.getItem('pung_coins') || '0', 10) || 0; } catch (e) { coins = 0; }
@@ -729,17 +736,41 @@
   }
 
   // ---------- 막대기(패들) ----------
-  // sticks 트레이: 보유 개수만큼 아이콘. 탭하면 활성 패들 켜짐.
+  // sticks 트레이: 보유 개수만큼 가로 아이콘. 클릭으로 활성/해제 토글.
+  // 활성 개수(activeSticks)에 비례해 하나의 긴 패들로 자동 합체된다.
   let paddle = null;              // { x, half, bouncesLeft, count }
-  let mergeSticks = false;        // 합치기 토글
+  let activeSticks = 0;           // 현재 활성화한 막대 개수(자동 합체)
+  const STICK_MAX_ICONS = 5;      // 트레이 아이콘 표시 한도
   const PADDLE_BAND = 26;         // 패들 y 두께(px)
   function paddleY() { return H - 90; }
-  function activatePaddle() {
-    if (store.sticks <= 0) return;
-    const count = mergeSticks ? Math.min(3, store.sticks) : 1;
-    const half = (count >= 3 ? 0.8 : count === 2 ? 0.55 : 0.3) * W / 2;
-    paddle = { x: W / 2, half: half, bouncesLeft: 3 * count, count: count };
+  // 활성 개수 → 패들 절반폭(개수 많을수록 길게)
+  function paddleHalfFor(count) {
+    const frac = Math.min(0.92, 0.22 + (count - 1) * 0.18);  // 1개=0.22, 2개=0.40, 3개=0.58…
+    return frac * W / 2;
+  }
+  // 활성 막대 개수에 맞춰 패들을 (재)구성. count=0이면 패들 제거.
+  function rebuildPaddle() {
+    const ownable = Math.min(store.sticks, STICK_MAX_ICONS);
+    activeSticks = Math.max(0, Math.min(activeSticks, ownable));
+    if (activeSticks <= 0) { paddle = null; renderStickTray(); return; }
+    const prevX = paddle ? paddle.x : W / 2;
+    paddle = {
+      x: Math.max(0, Math.min(W, prevX)),
+      half: paddleHalfFor(activeSticks),
+      bouncesLeft: 3 * activeSticks,
+      count: activeSticks,
+    };
+    paddle.x = Math.max(paddle.half, Math.min(W - paddle.half, paddle.x));
     renderStickTray();
+  }
+  // 트레이 아이콘 토글: i번째(0-based) 막대 활성/해제
+  function toggleStick(i) {
+    const ownable = Math.min(store.sticks, STICK_MAX_ICONS);
+    if (i >= ownable) return;
+    // 아이콘 i 가 활성 범위(< activeSticks) 안이면 그 지점까지 줄이고, 밖이면 i+1 까지 늘린다.
+    if (i < activeSticks) activeSticks = i;        // 해당 아이콘 끄기 → 그 앞까지만 유지
+    else activeSticks = i + 1;                     // 그 아이콘까지 켜기
+    rebuildPaddle();
   }
   function consumePaddleSticks() {
     // 패들 소멸 → 사용한 count 만큼 sticks 차감
@@ -747,6 +778,7 @@
     store.sticks = Math.max(0, store.sticks - paddle.count);
     saveStore();
     paddle = null;
+    activeSticks = 0;
     renderStickTray();
   }
 
@@ -803,14 +835,17 @@
     while (balls.length < want) spawnBall();
   }
 
-  function startGame() {
+  function startGame(fromStage) {
     ensureAudio();
-    stage = 1; catchesInStage = 0; combo = 0; maxCombo = 0;
+    // 시작 판: 인자 지정 시 그 판(1~30 범위 클램프), 없으면 1판.
+    let s = (typeof fromStage === 'number' && isFinite(fromStage)) ? Math.floor(fromStage) : 1;
+    s = Math.max(1, Math.min(TOTAL_STAGES, s));
+    stage = s; catchesInStage = 0; combo = 0; maxCombo = 0;
     slowFactor = 1; slowTimer = 0; zenActive = false; zenScored = false;
     masterMode = false; flashAlpha = 0; shake = 0;
     lives = LIVES_START;
     toastText = ''; toastTimer = 0; popsThisRun = 0;
-    paddle = null;
+    paddle = null; activeSticks = 0;
     recomputeKinematics();
     balls = [];
     const b0 = makeBall(W / 2, H * 0.3, (Math.random() * 2 - 1) * 80, 0);
@@ -847,8 +882,16 @@
     stopMusic();
     if (stage > best) { best = stage; saveBest(); elNewRecord.classList.remove('hidden'); }
     else elNewRecord.classList.add('hidden');
+    // 직전 도달 판 기억(이어하기용). 마스터모드는 30판으로 캡(이어하기는 정규 30판 한정).
+    resumeStage = Math.max(1, Math.min(TOTAL_STAGES, stage | 0));
+    saveResumeStage();
     elFinalScore.textContent = stage;
     elGoBest.textContent = (masterMode ? '마스터 도달 ' : '최고 도달 ') + best + '판';
+    // 이어하기 버튼: N>1 일 때만 노출
+    if (elResume) {
+      if (resumeStage > 1) { elResume.textContent = resumeStage + '판부터 계속'; elResume.classList.remove('hidden'); }
+      else elResume.classList.add('hidden');
+    }
     hidePlayChrome();
     elGameover.classList.remove('hidden');
     vibrate(60);
@@ -931,6 +974,7 @@
   function updateHud() {
     elHudStage.textContent = stage;
     elHudCombo.textContent = combo;
+    if (elHudCoins) elHudCoins.textContent = getCoins();
     elHudBest.textContent = best;
     if (elHudOf) elHudOf.textContent = masterMode ? ' MASTER' : ' / 30판';
     if (elHudLives) {
@@ -1373,34 +1417,18 @@
     ctx.restore();
   }
 
-  function drawComboFloat() {
-    if (combo <= 0 || balls.length === 0) return;
-    let anchor = balls[0];
-    for (const b of balls) if (b.y < anchor.y) anchor = b;
-    ctx.save();
-    const pulse = 1 + Math.sin(performance.now() / 220) * 0.05;
-    ctx.translate(anchor.x, anchor.y - anchor.r - 40);
-    ctx.scale(pulse, pulse);
-    ctx.font = '800 ' + Math.round(anchor.r * 0.9) + 'px ' + COL_FONT;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = COL.secondary;
-    ctx.shadowColor = hexToRgba(COL.secondary, 0.6); ctx.shadowBlur = 18;
-    ctx.fillText('♪' + combo, 0, 0);
-    ctx.restore();
-  }
-
   function drawToast() {
     if (toastTimer <= 0) return;
     const a = Math.min(1, toastTimer / 0.3);
     ctx.save();
     ctx.globalAlpha = a;
-    ctx.font = '800 30px ' + COL_FONT;
+    ctx.font = '800 40px ' + COL_FONT;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const ty = H * 0.16;
+    const ty = H / 2;  // 세로 중앙
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    roundRect(ctx, W / 2 - 130, ty - 28, 260, 56, 16); ctx.fill();
+    roundRect(ctx, W / 2 - 170, ty - 36, 340, 72, 18); ctx.fill();
     ctx.fillStyle = COL.secondary;
-    ctx.shadowColor = hexToRgba(COL.secondary, 0.5); ctx.shadowBlur = 14;
+    ctx.shadowColor = hexToRgba(COL.secondary, 0.5); ctx.shadowBlur = 16;
     ctx.fillText(toastText, W / 2, ty);
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -1417,11 +1445,10 @@
       drawParticles();
       drawBalls();
       drawPaddle();
-      drawComboFloat();
       if (slowFactor < 1 && state === STATE.PLAYING) {
         ctx.fillStyle = SHADE.zenDim;
         ctx.fillRect(-20, -20, W + 40, H + 40);
-        drawBalls(); drawPaddle(); drawComboFloat();
+        drawBalls(); drawPaddle();
       }
       if (flashAlpha > 0.01) {
         ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha.toFixed(3) + ')';
@@ -1727,7 +1754,7 @@
     // 안내
     const info = document.createElement('div');
     info.className = 'shop-info';
-    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + STICK_PRICE + ' 🪙). 게임 화면 하단 트레이에서 켜고, 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 3개까지 보이며 합치기로 더 긴 패들을 만들 수 있습니다.';
+    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + STICK_PRICE + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + STICK_MAX_ICONS + '개까지 보입니다.';
     elGridItems.appendChild(info);
   }
 
@@ -1804,24 +1831,17 @@
     if (!inPlay || store.sticks <= 0) { elStickTray.classList.add('hidden'); return; }
     elStickTray.classList.remove('hidden');
     elStickTray.innerHTML = '';
-    // 합치기 토글
-    const merge = document.createElement('button');
-    merge.id = 'stickMergeBtn';
-    merge.className = 'stick-merge' + (mergeSticks ? ' on' : '');
-    merge.textContent = mergeSticks ? '합치기 ON' : '합치기';
-    merge.addEventListener('click', () => { mergeSticks = !mergeSticks; if (paddle) activatePaddle(); renderStickTray(); });
-    elStickTray.appendChild(merge);
-    // 아이콘 최대 3개
-    const show = Math.min(3, store.sticks);
+    // 가로 일렬 아이콘(최대 STICK_MAX_ICONS). 클릭 2개 이상 → 자동으로 하나의 긴 패들.
+    const show = Math.min(STICK_MAX_ICONS, store.sticks);
     for (let i = 0; i < show; i++) {
       const ic = document.createElement('button');
-      ic.className = 'stick-icon' + (paddle ? ' active' : '');
-      ic.textContent = '|';
-      ic.addEventListener('click', () => { if (paddle) { paddle = null; } else { activatePaddle(); } renderStickTray(); });
+      ic.className = 'stick-icon' + (i < activeSticks ? ' active' : '');
+      ic.textContent = '▬';   // 가로 막대
+      ic.addEventListener('click', () => { toggleStick(i); });
       elStickTray.appendChild(ic);
     }
-    if (store.sticks > 3) {
-      const more = document.createElement('span'); more.className = 'stick-more'; more.textContent = '+' + (store.sticks - 3);
+    if (store.sticks > STICK_MAX_ICONS) {
+      const more = document.createElement('span'); more.className = 'stick-more'; more.textContent = '+' + (store.sticks - STICK_MAX_ICONS);
       elStickTray.appendChild(more);
     }
   }
@@ -1832,11 +1852,12 @@
     elMuteToggle.setAttribute('aria-pressed', String(muted));
   }
 
-  elStart.addEventListener('click', startGame);
-  elRetry.addEventListener('click', startGame);
+  elStart.addEventListener('click', () => startGame(1));
+  elRetry.addEventListener('click', () => startGame(1));
+  if (elResume) elResume.addEventListener('click', () => startGame(resumeStage));
   elMenuBtn.addEventListener('click', toMenu);
   elShare.addEventListener('click', shareResult);
-  elWinRetry.addEventListener('click', startGame);
+  elWinRetry.addEventListener('click', () => startGame(1));
   elWinMenu.addEventListener('click', toMenu);
   elWinShare.addEventListener('click', shareResult);
   if (elWinMaster) elWinMaster.addEventListener('click', enterMasterMode);
@@ -1862,11 +1883,6 @@
   // 체크포인트
   elCpContinue.addEventListener('click', resumeFromCheckpoint);
   elCpStop.addEventListener('click', toMenu);
-
-  // 합치기(오버레이용 — 트레이 버튼과 동기화)
-  if (elStickMerge) elStickMerge.addEventListener('click', () => {
-    mergeSticks = !mergeSticks; if (paddle) activatePaddle(); renderStickTray();
-  });
 
   // 백그라운드
   document.addEventListener('visibilitychange', () => {
