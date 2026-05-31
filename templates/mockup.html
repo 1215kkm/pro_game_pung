@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>목업 — {{TITLE}}</title>
+<style>
+  /* 엄청 심플 베이스 — 색 3, 그림자 0, 장식 0, 타이포 3단 */
+  :root {
+    --bg: #fafafa; --panel: #fff; --line: #e5e7eb;
+    --fg: #111827; --muted: #6b7280; --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 16px; }
+  .screen { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .screen h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .screen .desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  /* 9:16 phone frame — 화면 비율을 모바일 기본으로 */
+  .frame { aspect-ratio: 9 / 16; background: white; border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow: hidden; font-size: 14px; }
+  /* 목업 안에서 자주 쓸 패턴 — 강디가 인라인으로 더 정의 가능 */
+  .frame .topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .frame .title { font-size: 18px; font-weight: 700; margin: 16px 0 8px; }
+  .frame .body { font-size: 13px; line-height: 1.55; }
+  .frame .cta { display: block; background: var(--accent); color: white; text-align: center; padding: 12px; border-radius: 8px; font-weight: 600; margin-top: 16px; text-decoration: none; }
+  .frame .input { display: block; border: 1px solid var(--line); padding: 10px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+  .frame .row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>목업 — {{TITLE}}</h1>
+  <div class="meta">강디 빠른 스케치 · 엄청 심플 베이스 · 클릭 동작 없음 (보기 전용)</div>
+</header>
+
+<div class="screens">
+  <!-- 강디가 안건별 화면을 여기 채움. 화면당 article.screen 한 개.
+       빠르게 — 색 ≤ 3, 그림자 X, 장식 0. 위계는 크기·여백·굵기로만.
+
+  예시:
+  <article class="screen">
+    <h3>1. 진입</h3>
+    <div class="desc">사용자가 처음 보는 화면</div>
+    <div class="frame">
+      <div class="topbar"><span>9:41</span><span>●●●</span></div>
+      <div class="title">한 줄 카피</div>
+      <div class="body">보조 한 줄.</div>
+      <a class="cta">시작하기</a>
+    </div>
+  </article>
+  -->
+
+  <!-- SCREENS_START -->
+
+  <!-- SCREENS_END -->
+</div>
+
+</body>
+</html>

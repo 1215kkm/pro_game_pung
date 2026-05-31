@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>강팀 회의 — {{TITLE}}</title>
+<style>
+  /* 회의록 문서 자체의 표시 스타일 — 산출물용 Crowny Class 디자인 시스템과는 별개. */
+  :root {
+    --bg: #fafafa; --panel: #fff; --line: #e5e7eb;
+    --fg: #111827; --muted: #6b7280;
+    --c-decision: #1f2937;  /* 강팀장·CEO */
+    --c-hub:      #2563eb;  /* 강팀장 */
+    --c-exec:     #0f766e;  /* 강디·강개발·강체크 */
+    --c-guard:    #7c3aed;  /* 아뱅·강체크 */
+    --c-wild:     #b45309;  /* 아뱅 */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 24px 32px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 20px; }
+  header .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  .turn { margin: 20px 0; }
+  .who { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 6px; }
+  .who .emoji { font-size: 18px; }
+  .bubble { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .bubble :first-child { margin-top: 0; }
+  .bubble :last-child { margin-bottom: 0; }
+  .bubble pre { background: #f3f4f6; padding: 10px 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  .bubble code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+  .bubble img, .bubble svg { max-width: 100%; height: auto; display: block; margin: 8px 0; }
+  .bubble table { border-collapse: collapse; margin: 8px 0; }
+  .bubble th, .bubble td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; font-size: 14px; }
+  .bubble th { background: #f9fafb; }
+  /* 5인 체제 (2026-05): pm·designer·dev·qa·marketer */
+  .turn.pm .who { color: var(--c-hub); }
+  .turn.designer .who, .turn.dev .who, .turn.qa .who { color: var(--c-exec); }
+  .turn.marketer .who { color: var(--c-wild); }
+  /* 하위호환 (옛 회의록 렌더용) */
+  .turn.ceo .who, .turn.advisor .who { color: var(--c-decision); }
+  .turn.ux .who, .turn.ui .who { color: var(--c-exec); }
+  .turn.security .who { color: var(--c-guard); }
+  .turn.abang .who { color: var(--c-wild); }
+  section.closing, section.summary { margin-top: 48px; border-top: 2px solid var(--line); padding-top: 32px; }
+  section.closing h2, section.summary h2 { margin: 0 0 16px; font-size: 18px; }
+  section.closing iframe { width: 100%; height: 600px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+  section.summary .block { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  section.summary .block h3 { margin: 0 0 8px; font-size: 15px; color: var(--c-hub); }
+  section.summary ul { margin: 0; padding-left: 20px; }
+  .final-comments { margin-top: 24px; }
+  .final-comments .comment { padding: 10px 14px; border-left: 3px solid var(--line); margin: 8px 0; }
+  .final-comments .comment.ceo, .final-comments .comment.advisor { border-color: var(--c-decision); }
+  .final-comments .comment.pm { border-color: var(--c-hub); }
+  .final-comments .comment.ux, .final-comments .comment.ui, .final-comments .comment.dev, .final-comments .comment.qa { border-color: var(--c-exec); }
+  .final-comments .comment.marketer, .final-comments .comment.security { border-color: var(--c-guard); }
+  .final-comments .comment.abang { border-color: var(--c-wild); }
+  .final-comments .comment .who { font-weight: 600; margin-right: 8px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>강팀 회의 — {{TITLE}}</h1>
+  <div class="meta">날짜: {{DATE}}  ·  안건: {{AGENDA}}  ·  진행: 🎯 강팀장</div>
+</header>
+
+<main>
+
+<!-- 턴 블록 복사용 (각 멤버가 자기 턴을 여기에 append):
+<div class="turn pm">       <-- 클래스: ceo / advisor / pm / ux / ui / dev / qa / marketer / security / abang
+  <div class="who"><span class="emoji">🎯</span> 강팀장</div>
+  <div class="bubble">
+    여기에 마크다운 → HTML 또는 직접 HTML.
+    SVG·표·코드블록·이미지 자유롭게.
+  </div>
+</div>
+-->
+
+<!-- TURNS_START -->
+
+<!-- TURNS_END -->
+
+</main>
+
+<section class="summary">
+  <h2>🎯 강팀장 마감 요약 — 텔레그램으로도 발송됨</h2>
+  <p style="color: var(--muted); font-size: 13px; margin-top: 0;">
+    강팀장은 회의 마감 시 아래 SUMMARY 블록을 *반드시* 채운다.
+    이 안의 내용이 텔레그램 메시지 본문으로 그대로 전송된다.
+  </p>
+  <!-- SUMMARY_START -->
+  <div class="block">
+    <h3>결정</h3>
+    <ul><!-- 한 줄씩 결정 사항 --></ul>
+  </div>
+  <div class="block">
+    <h3>미결정 / 다음 회의 안건</h3>
+    <ul><!-- 한 줄씩 --></ul>
+  </div>
+  <div class="block">
+    <h3>다음 액션</h3>
+    <ul><!-- "[담당] 무엇을 언제까지" 형식 --></ul>
+  </div>
+  <!-- SUMMARY_END -->
+</section>
+
+<section class="closing">
+  <h2>회의 마무리 — 목업 보고 한 마디씩</h2>
+  <iframe src="mockup.html" title="화면 목업"></iframe>
+  <div class="final-comments">
+    <!-- 디자인/화면 안건이 있었던 회의는 *모든 참석자가* 여기 한 줄씩 남기고 종료 -->
+    <!-- 예:
+    <div class="comment ui"><span class="who">🎨 강디</span>: 결제 단계 CTA 위계 한 단 더 약하게.</div>
+    -->
+    <!-- COMMENTS_START -->
+
+    <!-- COMMENTS_END -->
+  </div>
+</section>
+
+<footer>강팀 · Crowny Class 디자인 시스템</footer>
+</body>
+</html>
