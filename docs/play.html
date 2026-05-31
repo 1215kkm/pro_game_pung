@@ -84,10 +84,11 @@
     text-shadow: 0 2px 18px rgba(var(--primary-rgb), 0.45); }
   #hud .stage-num .of { font-size: var(--font-lg); font-weight: 600; color: var(--text-secondary); }
   #hud .stage-label { font-size: var(--font-sm); color: var(--text-secondary); letter-spacing: 2px; }
-  #hud .substat { display: flex; gap: var(--spacing-lg); opacity: 0.8; }
+  #hud .substat { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--spacing-md) var(--spacing-lg); opacity: 0.8; }
   #hud .substat .stat { text-align: center; }
   #hud .substat .label { font-size: var(--font-sm); color: var(--text-secondary); display: block; line-height: 1.2; }
   #hud .substat .value { font-size: var(--font-lg); font-weight: 700; }
+  #hud .substat #hudScore { color: var(--secondary); }
   #hud .substat #hudLives { color: var(--primary); letter-spacing: 1px; }
   #hud .substat #hudCoins { color: var(--secondary); }
 
@@ -222,6 +223,7 @@
     <div class="stage-label">PUNG</div>
   </div>
   <div class="substat">
+    <div class="stat"><span class="label">점수</span><span class="value" id="hudScore">0</span></div>
     <div class="stat"><span class="label">콤보</span><span class="value" id="hudCombo">0</span></div>
     <div class="stat"><span class="label">코인</span><span class="value" id="hudCoins">0</span></div>
     <div class="stat"><span class="label">최고 도달</span><span class="value" id="hudBest">1</span></div>
@@ -285,6 +287,7 @@
 <div class="overlay hidden" id="gameover">
   <div id="newRecordBadge" class="new-record hidden">최고 기록!</div>
   <div class="score-final"><span id="finalScore">1</span><span class="unit"> 판 도달</span></div>
+  <div class="best" id="goScore" style="color:var(--secondary)">점수 0</div>
   <div class="best" id="goBest">최고 도달 1판</div>
   <div class="gameover-row">
     <button class="btn btn-primary" id="retryBtn">처음부터(1판)</button>
@@ -354,6 +357,7 @@
   const ctx = canvas.getContext('2d');
   const elHud = $('hud');
   const elHudStage = $('hudStage');
+  const elHudScore = $('hudScore');
   const elHudOf = $('hudOf');
   const elHudCombo = $('hudCombo');
   const elHudCoins = $('hudCoins');
@@ -366,6 +370,7 @@
   const elGameover = $('gameover');
   const elNewRecord = $('newRecordBadge');
   const elFinalScore = $('finalScore');
+  const elGoScore = $('goScore');
   const elGoBest = $('goBest');
   const elRetry = $('retryBtn');
   const elResume = $('resumeBtn');
@@ -480,10 +485,12 @@
   }
 
   let best = 1;                   // 최고 도달 판수
+  let bestScore = 0;              // 최고 점수
   let muted = false;
 
   // 게임 변수
   let stage, catchesInStage, combo, maxCombo, slowFactor, slowTimer, zenActive, zenScored;
+  let score = 0; // 이번 판 누적 점수 (성공 1회당 현재 판 수만큼)
   let masterMode = false;
   let lives;
   let flashAlpha = 0;
@@ -547,6 +554,11 @@
   try { best = parseInt(localStorage.getItem('pung_best_stage') || '1', 10) || 1; } catch (e) { best = 1; }
   if (best < 1) best = 1;
   function saveBest() { try { localStorage.setItem('pung_best_stage', String(best)); } catch (e) { /* 프라이빗 모드 */ } }
+
+  try { bestScore = parseInt(localStorage.getItem('pung_best_score') || '0', 10) || 0; } catch (e) { bestScore = 0; }
+  if (bestScore < 0) bestScore = 0;
+  function saveBestScore() { try { localStorage.setItem('pung_best_score', String(bestScore)); } catch (e) { /* 프라이빗 모드 */ } }
+  function recordBestScore() { if (score > bestScore) { bestScore = score; saveBestScore(); } }
 
   // 게임오버 시점의 도달 판(이어하기용)
   let resumeStage = 1;
@@ -1161,7 +1173,7 @@
     // 시작 판: 인자 지정 시 그 판(1~30 범위 클램프), 없으면 1판.
     let s = (typeof fromStage === 'number' && isFinite(fromStage)) ? Math.floor(fromStage) : 1;
     s = Math.max(1, Math.min(TOTAL_STAGES, s));
-    stage = s; catchesInStage = 0; combo = 0; maxCombo = 0;
+    stage = s; catchesInStage = 0; combo = 0; maxCombo = 0; score = 0;
     slowFactor = 1; slowTimer = 0; zenActive = false; zenScored = false;
     masterMode = false; flashAlpha = 0; shake = 0;
     lives = LIVES_START;
@@ -1206,7 +1218,9 @@
     // 직전 도달 판 기억(이어하기용). 마스터모드는 30판으로 캡(이어하기는 정규 30판 한정).
     resumeStage = Math.max(1, Math.min(TOTAL_STAGES, stage | 0));
     saveResumeStage();
+    recordBestScore();
     elFinalScore.textContent = stage;
+    if (elGoScore) elGoScore.textContent = '점수 ' + score + ' (최고 ' + bestScore + ')';
     elGoBest.textContent = (masterMode ? '마스터 도달 ' : '최고 도달 ') + best + '판';
     // 이어하기 버튼: N>1 일 때만 노출
     if (elResume) {
@@ -1224,6 +1238,7 @@
     if (stage > best) best = stage;
     if (best < TOTAL_STAGES) best = TOTAL_STAGES;
     saveBest();
+    recordBestScore();
     elWinCombo.textContent = maxCombo;
     hidePlayChrome();
     elWin.classList.remove('hidden');
@@ -1296,6 +1311,7 @@
 
   function updateHud() {
     elHudStage.textContent = stage;
+    if (elHudScore) elHudScore.textContent = score;
     elHudCombo.textContent = combo;
     if (elHudCoins) elHudCoins.textContent = getCoins();
     elHudBest.textContent = best;
@@ -1419,7 +1435,9 @@
   // 판 진행 로직(터짐·일반 공통). zenBonus면 두 판.
   function progressStage(zenBonus) {
     const prevStage = stage;
-    catchesInStage += (zenBonus ? 2 : 1);
+    const gained = zenBonus ? 2 : 1;
+    score += prevStage * gained; // 성공 1회당 현재 판 수만큼(1판=1점, 2판=2점…). 젠보너스는 2회분.
+    catchesInStage += gained;
     while (catchesInStage >= catchesForStage(stage) && (masterMode || stage < TOTAL_STAGES)) {
       catchesInStage -= catchesForStage(stage);
       stage += 1;
