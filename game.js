@@ -21,6 +21,7 @@
   const elHudOf = $('hudOf');
   const elHudCombo = $('hudCombo');
   const elHudBest = $('hudBest');
+  const elHudLives = $('hudLives');
   const elMenu = $('menu');
   const elMenuBest = $('menuBest');
   const elStart = $('startBtn');
@@ -34,7 +35,13 @@
   const elShare = $('shareBtn');
   const elMenuBtn = $('menuBtn');
   const elBlindBanner = $('blindBanner');
-  // 상점 / 일시정지 / 스틱
+  const elWin = $('winScreen');
+  const elWinCombo = $('winCombo');
+  const elWinRetry = $('winRetryBtn');
+  const elWinShare = $('winShareBtn');
+  const elWinMenu = $('winMenuBtn');
+  const elWinMaster = $('winMasterBtn');
+  // 상점 / 일시정지 / 체크포인트 / 스틱
   const elShopBtn = $('shopBtn');
   const elShop = $('shop');
   const elShopCoins = $('shopCoins');
@@ -51,6 +58,10 @@
   const elPauseResume = $('pauseResume');
   const elPauseShopBtn = $('pauseShopBtn');
   const elPauseMenu = $('pauseMenu');
+  const elCheckpoint = $('checkpoint');
+  const elCpTitle = $('cpTitle');
+  const elCpContinue = $('cpContinue');
+  const elCpStop = $('cpStop');
   const elStickTray = $('stickTray');
   const elStickMerge = $('stickMerge');
 
@@ -78,7 +89,7 @@
   };
 
   // ---------- 상태 ----------
-  const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, PAUSED: 4 };
+  const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, WIN: 3, PAUSED: 4, CHECKPOINT: 5 };
   let state = STATE.MENU;
 
   let W = 0, H = 0, DPR = 1;
@@ -86,12 +97,7 @@
 
   // ----- 30판 구조 + 무한 마스터모드 -----
   const TOTAL_STAGES = 30;
-  // 판당 필요한 캐치 수(판이 오를수록 증가). 1판 5회, 30판 20회, 마스터모드(31+)는
-  // 계속 증가하되 상한 30회. (공별 익음 카운터 b.pops 와는 완전 별개로 동작)
-  function catchesForStage(stage) {
-    const p = Math.max(0, Math.min(1, (stage - 1) / 29));
-    return Math.min(30, Math.round(5 + p * 15));
-  }
+  const LIVES_START = 3, LIVES_MAX = 5; // 하트(생명)
 
   // ----- 난이도: 속도 곡선 (대칭, 고정 정점, 가변 중력) -----
   const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
@@ -128,6 +134,12 @@
     return Math.floor((Math.max(1, stage) - 1) / 5) + 1;
   }
 
+  // 판 → 요구 튕김 횟수: 1판 5회 → 30판 20회, 마스터(31+) 상한 30회까지 증가.
+  function catchesForStage(stage) {
+    const p = Math.max(0, Math.min(1, (stage - 1) / (TOTAL_STAGES - 1)));
+    return Math.min(30, Math.round(5 + p * 15));
+  }
+
   let best = 1;                   // 최고 도달 판수
   let muted = false;
   let blindMode = false;
@@ -135,10 +147,12 @@
   // 게임 변수
   let stage, catchesInStage, combo, maxCombo, slowFactor, slowTimer, zenActive, zenScored;
   let masterMode = false;
+  let lives;
   let flashAlpha = 0;
   let shake = 0;
   let lastTime = 0;
   let running = false;
+  let winParticles = [];
   // 토스트(비차단)
   let toastText = '', toastTimer = 0;
   // 코인 획득 카운터(5개째 축하용)
@@ -715,7 +729,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     // 공 크기 약 1.4배(기존 0.070 → 0.098)
     ballRadius = Math.max(24, Math.min(W, H) * 0.098);
-    if ((state === STATE.PLAYING || state === STATE.PAUSED) && prevW > 0 && prevH > 0) {
+    if ((state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT) && prevW > 0 && prevH > 0) {
       for (const b of balls) {
         b.x = (b.x / prevW) * W;
         b.y = (b.y / prevH) * H;
@@ -760,6 +774,7 @@
     stage = 1; catchesInStage = 0; combo = 0; maxCombo = 0;
     slowFactor = 1; slowTimer = 0; zenActive = false; zenScored = false;
     masterMode = false; flashAlpha = 0; shake = 0;
+    lives = LIVES_START;
     toastText = ''; toastTimer = 0; popsThisRun = 0;
     paddle = null;
     recomputeKinematics();
@@ -768,11 +783,14 @@
     balls.push(b0);
     reconcileBalls();
     particles = [];
+    winParticles = [];
     state = STATE.PLAYING;
     elMenu.classList.add('hidden');
     elGameover.classList.add('hidden');
+    elWin.classList.add('hidden');
     elShop.classList.add('hidden');
     elPause.classList.add('hidden');
+    elCheckpoint.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
@@ -804,14 +822,28 @@
     vibrate(60);
   }
 
+  function winGame() {
+    state = STATE.WIN;
+    stopMusic();
+    if (stage > best) best = stage;
+    if (best < TOTAL_STAGES) best = TOTAL_STAGES;
+    saveBest();
+    elWinCombo.textContent = maxCombo;
+    hidePlayChrome();
+    elWin.classList.remove('hidden');
+    spawnWinParticles();
+    playFanfare();
+    flashAlpha = 1;
+    vibrate([40, 30, 40, 30, 40, 30, 120]);
+  }
+
   function enterMasterMode() {
     masterMode = true;
     state = STATE.PLAYING;
     recomputeKinematics();
     reconcileBalls();
-    flashAlpha = 1;
-    playFanfare();
-    vibrate([40, 30, 40, 30, 120]);
+    flashAlpha = 0;
+    elWin.classList.add('hidden');
     elGameover.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
@@ -827,11 +859,27 @@
     state = STATE.MENU;
     stopMusic();
     elGameover.classList.add('hidden');
+    elWin.classList.add('hidden');
     elShop.classList.add('hidden');
     elPause.classList.add('hidden');
+    elCheckpoint.classList.add('hidden');
     hidePlayChrome();
     elMenu.classList.remove('hidden');
     elMenuBest.textContent = '최고 도달 ' + best + '판';
+  }
+
+  // 체크포인트 (3판마다 차단)
+  function enterCheckpoint(clearedStage) {
+    state = STATE.CHECKPOINT;
+    stopMusic();
+    elCpTitle.textContent = clearedStage + '판 클리어!';
+    elCheckpoint.classList.remove('hidden');
+  }
+  function resumeFromCheckpoint() {
+    elCheckpoint.classList.add('hidden');
+    state = STATE.PLAYING;
+    startMusic();
+    lastTime = performance.now();
   }
 
   // 일시정지
@@ -854,6 +902,10 @@
     elHudCombo.textContent = combo;
     elHudBest.textContent = best;
     if (elHudOf) elHudOf.textContent = masterMode ? ' MASTER' : ' / 30판';
+    if (elHudLives) {
+      const n = Math.max(0, lives | 0);
+      elHudLives.textContent = '♥'.repeat(Math.min(n, LIVES_MAX)) + '♡'.repeat(Math.max(0, LIVES_MAX - n));
+    }
   }
 
   function showToast(text) { toastText = text; toastTimer = 0.9; }
@@ -919,6 +971,8 @@
     shake = 12;
     vibrate([40, 30, 40, 30, 60]);
     awardCoin();
+    lives = Math.min(LIVES_MAX, lives + 1);
+    updateHud();
     const idx = balls.indexOf(b);
     if (idx >= 0) balls.splice(idx, 1);
     reconcileBalls();
@@ -963,29 +1017,45 @@
     maybeZen();
   }
 
-  // 판 진행 로직(터짐·일반 공통). zenBonus면 캐치 2회.
-  // 한 판은 그 판의 catchesForStage(stage)만큼 누적해야 클리어. 멈춤(체크포인트)·
-  // 블로킹 승리화면 없음. 30판 클리어 시 마스터모드로 끊김 없이 자동 진입.
+  // 판 진행 로직(터짐·일반 공통). zenBonus면 두 판.
   function progressStage(zenBonus) {
+    const prevStage = stage;
     catchesInStage += (zenBonus ? 2 : 1);
-    // 누적이 현재 판 요구치를 넘으면 다음 판으로(여러 판 점프 가능)
-    while (catchesInStage >= catchesForStage(stage)) {
+    while (catchesInStage >= catchesForStage(stage) && (masterMode || stage < TOTAL_STAGES)) {
       catchesInStage -= catchesForStage(stage);
-      const cleared = stage;     // 막 깬 판
       stage += 1;
-      if (cleared === TOTAL_STAGES) {
-        // 30판 클리어 → 블로킹 승리화면 없이 토스트 후 마스터모드 자동 진입
-        if (stage - 1 > best) { best = stage - 1; saveBest(); }
-        showToast('30판 클리어! 마스터모드');
-        recomputeKinematics();
-        enterMasterMode();
-        return;
-      }
-      showToast(cleared + '판 클리어!');   // 매 판 토스트만, 멈춤 없음
+      if (!masterMode && stage >= TOTAL_STAGES) break;
     }
     recomputeKinematics();
     reconcileBalls();
     updateHud();
+
+    // 클리어 검사(체크포인트보다 우선)
+    if (!masterMode && stage >= TOTAL_STAGES) { winGame(); return; }
+
+    // 판이 실제로 올랐다면(여러 판 점프 가능) — 가장 최근 클리어 판들 처리
+    for (let s = prevStage; s < stage; s++) {
+      const cleared = s;  // s판을 막 깬 것
+      // 토스트(비차단)
+      showToast(cleared + '판 클리어!');
+      // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
+      if (cleared % 3 === 0) { enterCheckpoint(cleared); return; }
+    }
+  }
+
+  function spawnWinParticles() {
+    const colors = [COL.primary, COL.secondary, COL.refractFrom, COL.refractTo, '#FFFFFF'];
+    for (let i = 0; i < 120; i++) {
+      const a = -Math.PI / 2 + (Math.random() * 2 - 1) * 0.7;
+      const sp = 380 + Math.random() * 620;
+      winParticles.push({
+        x: W * (0.2 + Math.random() * 0.6), y: H + 10,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 1.6 + Math.random() * 1.2, age: 0,
+        size: 4 + Math.random() * 8, rot: Math.random() * Math.PI,
+        color: colors[(Math.random() * colors.length) | 0],
+      });
+    }
   }
 
   // ---------- 입력 ----------
@@ -1048,6 +1118,25 @@
   canvas.addEventListener('touchend', onPointerUp);
   canvas.addEventListener('mouseup', onPointerUp);
 
+  // 공 낙하 피드백(플래시/셰이크/진동/사운드)
+  function onBallLost() {
+    flashAlpha = Math.max(flashAlpha, 0.5);
+    shake = 14;
+    vibrate([30, 40, 30]);
+    if (actx && !muted) {
+      const t = actx.currentTime;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(320, t);
+      o.frequency.exponentialRampToValueAtTime(90, t + 0.28);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.35);
+    }
+  }
+
   // ---------- 업데이트 ----------
   function update(dt) {
     if (slowTimer > 0) {
@@ -1059,7 +1148,7 @@
     const sdt = dt * slowFactor;
     const py = paddleY();
 
-    let fell = false;
+    let fellCount = 0;
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i];
       if (b.entering) {
@@ -1089,7 +1178,14 @@
           }
         }
 
-        if (b.y - b.r > H) fell = true;
+        // 낙하(바닥 아래로): 그 공 제거 + 하트 1 차감 (즉시 게임오버 아님)
+        if (b.y - b.r > H) {
+          balls.splice(i, 1);
+          lives -= 1;
+          fellCount += 1;
+          i--;
+          continue;
+        }
       }
 
       b.sx += (1 - b.sx) * Math.min(1, dt * 9);
@@ -1111,7 +1207,24 @@
     shake *= Math.max(0, 1 - dt * 8);
     if (toastTimer > 0) toastTimer -= dt;
 
-    if (fell) gameOver();
+    if (fellCount > 0) {
+      onBallLost();
+      if (lives <= 0) { gameOver(); return; }
+      reconcileBalls();
+      updateHud();
+    }
+  }
+
+  function updateWin(dt) {
+    flashAlpha *= Math.max(0, 1 - dt * 3);
+    for (let i = winParticles.length - 1; i >= 0; i--) {
+      const p = winParticles[i];
+      p.age += dt;
+      p.vy += 900 * dt;
+      p.vx *= (1 - dt * 0.6);
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 5;
+      if (p.age >= p.life) winParticles.splice(i, 1);
+    }
   }
 
   // ---------- 렌더 ----------
@@ -1267,7 +1380,7 @@
 
     drawBackground();
 
-    if (state === STATE.PLAYING || state === STATE.PAUSED) {
+    if (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT) {
       if (blindMode && state === STATE.PLAYING) {
         ctx.fillStyle = '#000';
         ctx.fillRect(-20, -20, W + 40, H + 40);
@@ -1288,8 +1401,27 @@
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
       drawToast();
+    } else if (state === STATE.WIN) {
+      drawWinParticles();
+      if (flashAlpha > 0.01) {
+        ctx.fillStyle = 'rgba(255,255,255,' + (flashAlpha * 0.7).toFixed(3) + ')';
+        ctx.fillRect(-20, -20, W + 40, H + 40);
+      }
     }
     ctx.restore();
+  }
+
+  function drawWinParticles() {
+    for (const p of winParticles) {
+      const a = Math.max(0, 1 - p.age / p.life);
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // ---------- 루프 ----------
@@ -1298,6 +1430,7 @@
     lastTime = now;
     if (dt > MAX_DT) dt = MAX_DT;
     if (state === STATE.PLAYING) update(dt);
+    else if (state === STATE.WIN) updateWin(dt);
     render();
     requestAnimationFrame(loop);
   }
@@ -1314,7 +1447,7 @@
     c.fillStyle = 'rgba(27,29,33,0.78)';
     roundRect(c, 40, 40, cw - 80, ch - 80, 24); c.fill();
 
-    const cleared = stage > TOTAL_STAGES;
+    const cleared = state === STATE.WIN || stage >= TOTAL_STAGES;
     c.textAlign = 'center'; c.fillStyle = '#FFFFFF';
     c.font = "800 64px " + COL_FONT;
     c.fillText('튕기기', cw / 2, 180);
@@ -1563,7 +1696,7 @@
 
   // ================= 스틱 트레이 (게임 중) =================
   function renderStickTray() {
-    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED);
+    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
     if (!inPlay || store.sticks <= 0) { elStickTray.classList.add('hidden'); return; }
     elStickTray.classList.remove('hidden');
     elStickTray.innerHTML = '';
@@ -1601,6 +1734,10 @@
   elRetry.addEventListener('click', startGame);
   elMenuBtn.addEventListener('click', toMenu);
   elShare.addEventListener('click', shareResult);
+  elWinRetry.addEventListener('click', startGame);
+  elWinMenu.addEventListener('click', toMenu);
+  elWinShare.addEventListener('click', shareResult);
+  if (elWinMaster) elWinMaster.addEventListener('click', enterMasterMode);
   elBlindToggle.addEventListener('click', () => {
     blindMode = !blindMode; refreshToggleLabels();
     if (state === STATE.PLAYING) elBlindBanner.classList.toggle('hidden', !blindMode);
@@ -1622,6 +1759,10 @@
   elPauseBtn.addEventListener('click', pauseGame);
   elPauseResume.addEventListener('click', resumeGame);
   elPauseMenu.addEventListener('click', toMenu);
+
+  // 체크포인트
+  elCpContinue.addEventListener('click', resumeFromCheckpoint);
+  elCpStop.addEventListener('click', toMenu);
 
   // 합치기(오버레이용 — 트레이 버튼과 동기화)
   if (elStickMerge) elStickMerge.addEventListener('click', () => {
