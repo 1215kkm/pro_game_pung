@@ -120,6 +120,8 @@
     width: 44px; height: 44px; border-radius: 999px; border: none; cursor: pointer;
     font-size: var(--font-xl); font-weight: 800; line-height: 1;
     color: #fff; background: rgba(255,255,255,0.12);
+    touch-action: manipulation; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   .stage-select .ss-btn:disabled { opacity: 0.35; cursor: default; }
   .stage-select .ss-value { min-width: 72px; text-align: center; font-size: var(--font-2xl); font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
@@ -2431,8 +2433,26 @@
   }
 
   elStart.addEventListener('click', () => startGame(startStage));
-  elStageMinus.addEventListener('click', () => { startStage -= 1; updateStageSelect(); });
-  elStagePlus.addEventListener('click', () => { startStage += 1; updateStageSelect(); });
+  // 시작 판 -/+ : 짧게 탭 = 1칸, 길게 누르면 가속 연속 증감. 더블탭 줌은 CSS(touch-action)로 차단.
+  function stageStep(d) {
+    const prev = startStage;
+    startStage = Math.max(1, Math.min(best, startStage + d));
+    if (startStage !== prev) { updateStageSelect(); if (typeof vibrate === 'function') vibrate(8); }
+  }
+  function bindHold(btn, d) {
+    let to = null, iv = null;
+    const stop = () => { if (to) clearTimeout(to); if (iv) clearInterval(iv); to = iv = null; };
+    const start = (ev) => {
+      ev.preventDefault();              // 더블탭 줌·고스트 클릭 방지
+      stop();
+      stageStep(d);                     // 즉시 1칸
+      to = setTimeout(() => { iv = setInterval(() => stageStep(d), 90); }, 380); // 길게 누르면 연속
+    };
+    btn.addEventListener('pointerdown', start);
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((e) => btn.addEventListener(e, stop));
+  }
+  bindHold(elStageMinus, -1);
+  bindHold(elStagePlus, 1);
   elRetry.addEventListener('click', () => startGame(1));
   if (elResume) elResume.addEventListener('click', () => startGame(resumeStage));
   elMenuBtn.addEventListener('click', toMenu);
