@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#1B1D21" />
+<title>튕기기 — 공 안 떨어뜨리기</title>
+<link rel="stylesheet" href="styles/tokens.css" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--canvas-bg);
+    font-family: var(--font-family-base);
+    color: var(--text-primary);
+    font-size: var(--font-md);
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #game { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+  .hidden { display: none !important; }
+
+  /* ===== HUD — 점수는 작게 ===== */
+  #hud {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md));
+    left: 0; right: 0; display: flex; justify-content: center; gap: var(--spacing-lg);
+    pointer-events: none; z-index: 5; font-variant-numeric: tabular-nums;
+  }
+  #hud .stat { text-align: center; opacity: 0.85; }
+  #hud .stat .label { font-size: var(--font-sm); color: var(--text-secondary); display: block; line-height: 1.2; }
+  #hud .stat .value { font-size: var(--font-xl); font-weight: 700; }
+
+  /* ===== 오버레이 (메뉴·게임오버) ===== */
+  .overlay {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: var(--spacing-lg); padding: var(--spacing-xl);
+    background: radial-gradient(120% 120% at 50% 30%, rgba(43,45,53,0.55) 0%, rgba(27,29,33,0.92) 70%);
+    backdrop-filter: blur(2px);
+    text-align: center;
+  }
+  .overlay.hidden { display: none; }
+
+  .title {
+    font-size: var(--font-3xl); font-weight: 800; margin: 0;
+    background: var(--gradient); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; letter-spacing: 1px;
+  }
+  .subtitle { font-size: var(--font-md); color: var(--text-secondary); margin: 0; max-width: 320px; line-height: 1.6; }
+  .best { font-size: var(--font-lg); color: var(--secondary); font-weight: 700; }
+
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    border-radius: var(--radius-md); padding: 14px 28px; font-size: var(--font-md);
+    color: var(--text-primary); min-height: 44px; min-width: 44px;
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  }
+  .btn-primary { background: var(--gradient); box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.4); }
+  .btn-primary:active { transform: translateY(2px) scale(0.98); }
+  .btn-ghost {
+    background: var(--dark-tertiary); color: var(--text-primary);
+    border: 1px solid var(--dark-border);
+  }
+  .btn-ghost[aria-pressed="true"] { border-color: var(--primary); color: var(--secondary); }
+
+  .toggles { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; justify-content: center; }
+  .score-final { font-size: 56px; font-weight: 800; line-height: 1; }
+  .score-final .unit { font-size: var(--font-lg); color: var(--text-secondary); font-weight: 500; }
+
+  .gameover-row { display: flex; gap: var(--spacing-md); flex-wrap: wrap; justify-content: center; }
+  .new-record {
+    font-size: var(--font-md); font-weight: 700; color: var(--secondary);
+    border: 1px solid var(--secondary); border-radius: var(--radius-full);
+    padding: 4px 14px; animation: pop 0.4s ease;
+  }
+  @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .blind-banner {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + var(--spacing-md));
+    left: 0; right: 0; text-align: center; color: var(--text-secondary);
+    font-size: var(--font-sm); z-index: 6; pointer-events: none; opacity: 0.7;
+  }
+  .blind-banner.hidden { display: none; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden" aria-hidden="true">
+  <div class="stat"><span class="label">점수</span><span class="value" id="hudScore">0</span></div>
+  <div class="stat"><span class="label">콤보</span><span class="value" id="hudCombo">0</span></div>
+</div>
+
+<div class="blind-banner hidden" id="blindBanner">눈 감고 치기 — 소리·진동으로 위치를 느끼세요</div>
+
+<!-- 메뉴 -->
+<div class="overlay" id="menu">
+  <h1 class="title">튕기기</h1>
+  <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 콤보를 쌓을수록 음이 올라갑니다.</p>
+  <div class="best" id="menuBest">최고기록 0</div>
+  <button class="btn btn-primary" id="startBtn">게임 시작</button>
+  <div class="toggles">
+    <button class="btn btn-ghost" id="blindToggle" aria-pressed="false">눈 감고 치기 끄기</button>
+    <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
+  </div>
+</div>
+
+<!-- 게임오버 -->
+<div class="overlay hidden" id="gameover">
+  <div id="newRecordBadge" class="new-record hidden">신기록!</div>
+  <div class="score-final"><span id="finalScore">0</span><span class="unit"> 점</span></div>
+  <div class="best" id="goBest">최고기록 0</div>
+  <div class="gameover-row">
+    <button class="btn btn-primary" id="retryBtn">다시하기</button>
+    <button class="btn btn-ghost" id="shareBtn">결과 공유</button>
+    <button class="btn btn-ghost" id="menuBtn">메뉴</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

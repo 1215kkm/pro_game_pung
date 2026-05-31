@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>목업 — 퐁 게임 MVP 정의 — 코어 루프 1개와 수익 경로</title>
+<style>
+  /* 엄청 심플 베이스 — 색 3, 그림자 0, 장식 0, 타이포 3단 */
+  :root {
+    --bg: #fafafa; --panel: #fff; --line: #e5e7eb;
+    --fg: #111827; --muted: #6b7280; --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 16px; }
+  .screen { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .screen h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .screen .desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  /* 9:16 phone frame — 화면 비율을 모바일 기본으로 */
+  .frame { aspect-ratio: 9 / 16; background: white; border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow: hidden; font-size: 14px; }
+  /* 목업 안에서 자주 쓸 패턴 — 강디가 인라인으로 더 정의 가능 */
+  .frame .topbar { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .frame .title { font-size: 18px; font-weight: 700; margin: 16px 0 8px; }
+  .frame .body { font-size: 13px; line-height: 1.55; }
+  .frame .cta { display: block; background: var(--accent); color: white; text-align: center; padding: 12px; border-radius: 8px; font-weight: 600; margin-top: 16px; text-decoration: none; }
+  .frame .input { display: block; border: 1px solid var(--line); padding: 10px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+  .frame .row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>목업 — 퐁 게임 MVP 정의 — 코어 루프 1개와 수익 경로</h1>
+  <div class="meta">강디 빠른 스케치 · 엄청 심플 베이스 · 클릭 동작 없음 (보기 전용)</div>
+</header>
+
+<div class="screens">
+  <!-- 강디가 안건별 화면을 여기 채움. 화면당 article.screen 한 개.
+       빠르게 — 색 ≤ 3, 그림자 X, 장식 0. 위계는 크기·여백·굵기로만.
+
+  예시:
+  <article class="screen">
+    <h3>1. 진입</h3>
+    <div class="desc">사용자가 처음 보는 화면</div>
+    <div class="frame">
+      <div class="topbar"><span>9:41</span><span>●●●</span></div>
+      <div class="title">한 줄 카피</div>
+      <div class="body">보조 한 줄.</div>
+      <a class="cta">시작하기</a>
+    </div>
+  </article>
+  -->
+
+  <!-- SCREENS_START -->
+  <style>
+    /* ── 원-패들 라이즈: 게임 2색 교체 토큰 ── */
+    .opr { --p:#EF4444; --s:#FACC15; --canvas:#1B1D21;
+      --grad:linear-gradient(135deg,#EF4444 0%,#FACC15 100%);
+      --r10:10px; --r16:16px;
+      font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+    .opr .frame { width:360px; aspect-ratio:9/16; padding:0; border:none;
+      border-radius:var(--r16); overflow:hidden; position:relative;
+      background:var(--canvas); color:#fff; }
+    .opr .frame * { box-sizing:border-box; }
+    /* 상태표시줄 */
+    .opr .sb { display:flex; justify-content:space-between; align-items:center;
+      padding:10px 18px 0; font-size:16px; color:#fff; font-weight:600; }
+    /* CTA — 그라데이션 (시각 1순위) */
+    .opr .cta-grad { display:flex; align-items:center; justify-content:center; gap:8px;
+      background:var(--grad); color:#1B1D21; font-weight:800; font-size:20px;
+      border:none; border-radius:var(--r16); padding:18px; width:100%;
+      box-shadow:0 8px 24px rgba(239,68,68,.35); }
+    .opr .cta-out { display:flex; align-items:center; justify-content:center; gap:8px;
+      background:transparent; color:#fff; font-weight:700; font-size:18px;
+      border:2px solid rgba(255,255,255,.4); border-radius:var(--r16);
+      padding:16px; width:100%; }
+    .opr .pill { background:rgba(255,255,255,.08); border-radius:var(--r10);
+      padding:14px 18px; text-align:center; }
+    .opr .pill .lbl { font-size:16px; color:rgba(255,255,255,.55); }
+    .opr .pill .val { font-size:28px; font-weight:800; color:var(--s); margin-top:2px; }
+    .opr .iconbtn { width:44px; height:44px; border-radius:var(--r10);
+      background:rgba(255,255,255,.1); display:flex; align-items:center;
+      justify-content:center; }
+  </style>
+
+  <!-- 1. 메뉴 -->
+  <article class="screen opr">
+    <h3>1. 메뉴 (진입)</h3>
+    <div class="desc">목표: "게임 시작" 1탭으로 즉시 플레이. 최고기록으로 재도전 동기.</div>
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:0 28px 60px; gap:0;">
+        <!-- 로고 -->
+        <div style="font-size:34px; font-weight:900; line-height:1.15; text-align:center; margin-bottom:8px;">
+          <span style="background:linear-gradient(135deg,#EF4444,#FACC15); -webkit-background-clip:text; background-clip:text; color:transparent;">원-패들<br>라이즈</span>
+        </div>
+        <div style="font-size:16px; color:rgba(255,255,255,.55); margin-bottom:40px;">한 손가락, 떨어뜨리지 마</div>
+        <!-- 최고기록 -->
+        <div class="pill" style="width:100%; margin-bottom:28px;">
+          <div class="lbl">최고기록</div>
+          <div class="val">1,284</div>
+        </div>
+        <!-- 그라데이션 CTA -->
+        <button class="cta-grad">▶ 게임 시작</button>
+      </div>
+    </div>
+  </article>
+
+  <!-- 2. 플레이 -->
+  <article class="screen opr">
+    <h3>2. 플레이 (Canvas + HUD)</h3>
+    <div class="desc">목표: 공을 패들로 받아 점수 상승. 검은 캔버스에 옐로 공·레드 패들.</div>
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <!-- HUD -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:14px 18px 0;">
+        <div>
+          <div style="font-size:16px; color:rgba(255,255,255,.55);">점수</div>
+          <div style="font-size:32px; font-weight:900; line-height:1;">372</div>
+        </div>
+        <div style="text-align:right; display:flex; gap:10px; align-items:flex-start;">
+          <div>
+            <div style="font-size:16px; color:rgba(255,255,255,.55);">최고</div>
+            <div style="font-size:20px; font-weight:700; color:var(--s);">1284</div>
+          </div>
+          <div class="iconbtn" title="일시정지">⏸</div>
+        </div>
+      </div>
+      <!-- Canvas 흉내 (목업, 실동작 아님) -->
+      <div style="position:absolute; inset:96px 0 0; background:var(--canvas);">
+        <!-- 좌우 벽 -->
+        <div style="position:absolute; top:0; bottom:0; left:0; width:4px; background:rgba(255,255,255,.12);"></div>
+        <div style="position:absolute; top:0; bottom:0; right:0; width:4px; background:rgba(255,255,255,.12);"></div>
+        <!-- 옐로 공 -->
+        <div style="position:absolute; top:42%; left:46%; width:26px; height:26px; border-radius:50%; background:#FACC15; box-shadow:0 0 18px rgba(250,204,21,.7);"></div>
+        <!-- 궤적 점선 -->
+        <div style="position:absolute; top:48%; left:52%; width:80px; height:1px; background:repeating-linear-gradient(90deg,rgba(250,204,21,.4) 0 6px,transparent 6px 12px); transform:rotate(35deg); transform-origin:left;"></div>
+        <!-- 레드 패들 (하단) -->
+        <div style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); width:120px; height:14px; border-radius:7px; background:#EF4444; box-shadow:0 0 16px rgba(239,68,68,.6);"></div>
+        <div style="position:absolute; bottom:14px; width:100%; text-align:center; font-size:16px; color:rgba(255,255,255,.4);">← 손가락으로 좌우 →</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 3. 게임오버 -->
+  <article class="screen opr">
+    <h3>3. 게임오버 (오버레이)</h3>
+    <div class="desc">목표: 결과 확인 → "한 판 더"로 즉시 재도전, "공유"로 확산.</div>
+    <div class="frame">
+      <!-- 흐려진 플레이 배경 -->
+      <div style="position:absolute; inset:0; background:var(--canvas);">
+        <div style="position:absolute; bottom:60px; left:50%; transform:translateX(-50%); width:120px; height:14px; border-radius:7px; background:rgba(239,68,68,.35);"></div>
+      </div>
+      <!-- 반투명 다크 오버레이 -->
+      <div style="position:absolute; inset:0; background:rgba(15,16,19,.82); backdrop-filter:blur(2px); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 28px; gap:0;">
+        <div style="font-size:28px; font-weight:900; color:#EF4444; margin-bottom:24px;">게임 오버</div>
+        <div style="display:flex; gap:12px; width:100%; margin-bottom:32px;">
+          <div class="pill" style="flex:1;">
+            <div class="lbl">점수</div>
+            <div class="val">372</div>
+          </div>
+          <div class="pill" style="flex:1;">
+            <div class="lbl">최고기록</div>
+            <div class="val">1,284</div>
+          </div>
+        </div>
+        <button class="cta-grad" style="margin-bottom:12px;">↻ 한 판 더</button>
+        <button class="cta-out">⤴ 공유</button>
+      </div>
+    </div>
+  </article>
+  <!-- SCREENS_END -->
+</div>
+
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>강팀 회의 — 퐁 게임 MVP 정의 — 코어 루프 1개와 수익 경로</title>
+<style>
+  /* 회의록 문서 자체의 표시 스타일 — 산출물용 Crowny Class 디자인 시스템과는 별개. */
+  :root {
+    --bg: #fafafa; --panel: #fff; --line: #e5e7eb;
+    --fg: #111827; --muted: #6b7280;
+    --c-decision: #1f2937;  /* 강팀장·CEO */
+    --c-hub:      #2563eb;  /* 강팀장 */
+    --c-exec:     #0f766e;  /* 강디·강개발·강체크 */
+    --c-guard:    #7c3aed;  /* 아뱅·강체크 */
+    --c-wild:     #b45309;  /* 아뱅 */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 24px 32px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 20px; }
+  header .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  .turn { margin: 20px 0; }
+  .who { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 6px; }
+  .who .emoji { font-size: 18px; }
+  .bubble { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .bubble :first-child { margin-top: 0; }
+  .bubble :last-child { margin-bottom: 0; }
+  .bubble pre { background: #f3f4f6; padding: 10px 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  .bubble code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+  .bubble img, .bubble svg { max-width: 100%; height: auto; display: block; margin: 8px 0; }
+  .bubble table { border-collapse: collapse; margin: 8px 0; }
+  .bubble th, .bubble td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; font-size: 14px; }
+  .bubble th { background: #f9fafb; }
+  /* 5인 체제 (2026-05): pm·designer·dev·qa·marketer */
+  .turn.pm .who { color: var(--c-hub); }
+  .turn.designer .who, .turn.dev .who, .turn.qa .who { color: var(--c-exec); }
+  .turn.marketer .who { color: var(--c-wild); }
+  /* 하위호환 (옛 회의록 렌더용) */
+  .turn.ceo .who, .turn.advisor .who { color: var(--c-decision); }
+  .turn.ux .who, .turn.ui .who { color: var(--c-exec); }
+  .turn.security .who { color: var(--c-guard); }
+  .turn.abang .who { color: var(--c-wild); }
+  section.closing, section.summary { margin-top: 48px; border-top: 2px solid var(--line); padding-top: 32px; }
+  section.closing h2, section.summary h2 { margin: 0 0 16px; font-size: 18px; }
+  section.closing iframe { width: 100%; height: 600px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+  section.summary .block { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  section.summary .block h3 { margin: 0 0 8px; font-size: 15px; color: var(--c-hub); }
+  section.summary ul { margin: 0; padding-left: 20px; }
+  .final-comments { margin-top: 24px; }
+  .final-comments .comment { padding: 10px 14px; border-left: 3px solid var(--line); margin: 8px 0; }
+  .final-comments .comment.ceo, .final-comments .comment.advisor { border-color: var(--c-decision); }
+  .final-comments .comment.pm { border-color: var(--c-hub); }
+  .final-comments .comment.ux, .final-comments .comment.ui, .final-comments .comment.dev, .final-comments .comment.qa { border-color: var(--c-exec); }
+  .final-comments .comment.marketer, .final-comments .comment.security { border-color: var(--c-guard); }
+  .final-comments .comment.abang { border-color: var(--c-wild); }
+  .final-comments .comment .who { font-weight: 600; margin-right: 8px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>강팀 회의 — 퐁 게임 MVP 정의 — 코어 루프 1개와 수익 경로</h1>
+  <div class="meta">날짜: 2026-05-31  ·  안건: 퐁 게임 MVP 정의 — 코어 루프 1개와 수익 경로  ·  진행: 🎯 강팀장</div>
+</header>
+
+<main>
+
+<!-- 턴 블록 복사용 (각 멤버가 자기 턴을 여기에 append):
+<div class="turn pm">       <-- 클래스: ceo / advisor / pm / ux / ui / dev / qa / marketer / security / abang
+  <div class="who"><span class="emoji">🎯</span> 강팀장</div>
+  <div class="bubble">
+    여기에 마크다운 → HTML 또는 직접 HTML.
+    SVG·표·코드블록·이미지 자유롭게.
+  </div>
+</div>
+-->
+
+<!-- TURNS_START -->
+
+<div class="turn pm">
+  <div class="who"><span class="emoji">🎯</span> 강팀장</div>
+  <div class="bubble">
+    <p><strong>요청 재서술</strong>: 코드 0줄짜리 그린필드 레포 <code>pro_game_pung</code>. "퐁(Pong) 게임을 만든다"는 이름 외엔 정해진 게 없음. 오늘 회의 = <strong>무엇을 만들지 한 가지로 못 박기</strong>.</p>
+    <p><strong>반대 시각(스스로)</strong>: "그냥 퐁 클론" 으로 시작하면 차별점·수익이 0. 클래식 퐁은 이미 수만 개. 한 회의 = 한 결정이니, "퐁의 어떤 변주를 코어 루프로 잡을지"까지 오늘 정한다.</p>
+    <p><strong>안건</strong></p>
+    <ol>
+      <li>🧪 <strong>[UX]</strong> 코어 루프 — 첫 10초 안에 "한 판 더" 가 나오는 퐁 변주는? (조작·승패·리트라이 흐름)</li>
+      <li>🎨 <strong>[UI]</strong> 기술 베이스 + 화면 1장 — Canvas/HTML5 단일 페이지로 갈지, Crowny Class 토큰을 게임 UI에 어떻게 입힐지</li>
+      <li>💡 <strong>[수익]</strong> 심플 수익 경로 1줄 — 무료 웹게임에서 돈이 어디서 나오는가 (광고 리트라이 / 스킨 / 리더보드 시즌)</li>
+      <li>🛡️ <strong>[리스크]</strong> 웹게임 최소 리스크 — 점수 조작·개인정보 0수집 원칙·외부 의존성</li>
+    </ol>
+    <p><strong>참석</strong>: 강팀장 · 강디(UX+UI) · 강체크(품질+보안) · 아뱅(수익 아이디어). 강개발은 코드가 아직 없어 이번엔 산출물 없음 → 다음 회의 후 투입.</p>
+    <p><strong>목표</strong>: 지속 사용 + 심플 수익. 한 회의 = 한 결정. 오늘의 결정 = <em>"퐁 변주 1개 + 기술스택 + 수익 1줄"</em>.</p>
+  </div>
+</div>
+
+<div class="turn marketer">
+  <div class="who"><span class="emoji">🔥</span> 아뱅</div>
+  <div class="bubble">
+    <p><strong>①표면 문제</strong>: "무료 웹 퐁, 돈 어디서 나?" → 반사적으로 "배너 광고 붙이자". 그게 통념이고, 그래서 망한다.</p>
+    <p><strong>②숨은 진짜 문제</strong>: 광고는 <em>지금</em> 트래픽이 있어야 1원이라도 나온다. 코드 0줄짜리 MVP는 트래픽이 0이다. 광고는 수익이 아니라 <strong>유저가 떠나는 출구</strong>다 — 첫 10초 리트라이 루프(강디가 잡는 코어)에 배너가 끼면 "한 판 더"가 죽는다. MVP 단계에서 진짜 물어야 할 건 "돈"이 아니라 <strong>"무엇이 유저를 한 번 더 돌아오게 만드는가" = 리텐션 훅</strong>이다. 돈은 리텐션 위에만 박힌다.</p>
+    <p><strong>③건드릴 심리 레버</strong>: <strong>경쟁(사회적 증거)</strong> + <strong>매몰비용</strong>. 점수는 공짜로 만들 수 있고, "내 최고기록"이 쌓이는 순간 떠나기 아까워진다.</p>
+    <p><strong>④뒤집은 안</strong> — "수익 모델"을 깔지 말고 <em>수익이 자랄 토양(점수=공유=재방문)</em> 하나만 깐다:</p>
+    <table>
+      <tr><th>수익 후보</th><th>구현 난이도</th><th>예상 ARPU(가정)</th><th>심리 레버</th><th>MVP 적합?</th></tr>
+      <tr><td><strong>A. 리워드 광고 "이어하기"</strong><br>(죽으면 광고 보고 1회 부활)</td><td>중<br>(SDK·정책·심사)</td><td>$0.003~0.01/노출, but DAU 0이면 $0</td><td>손실회피</td><td>❌ 트래픽 선행 필요</td></tr>
+      <tr><td><strong>B. 스킨·테마 IAP</strong></td><td>상<br>(결제·자산·서버)</td><td>구매전환 1~2% × $0.99</td><td>자기표현·희소성</td><td>❌ 과설계</td></tr>
+      <tr><td><strong>C. 점수+공유 카드 (수익 0원)</strong><br>죽으면 "내 기록 #N위" 이미지 1장 → 링크 공유</td><td><strong>하</strong><br>(localStorage+캔버스 캡처)</td><td>직접수익 0<br>but K-factor↑ → CAC 0원 유입</td><td>경쟁+매몰비용+사회적증거</td><td>✅ <strong>이것</strong></td></tr>
+    </table>
+    <p><strong>🔥 MVP 수익 1줄 추천</strong>: <strong>"죽는 순간 = 최고기록 갱신 + 1탭 공유 카드"를 코어 루프에 박는다. 결제·광고는 0줄로 시작.</strong> 이유 — 무료 웹게임의 수익은 결제버튼이 아니라 <em>공짜 바이럴 트래픽</em>에서 먼저 나온다(CAC↓). 광고(A)는 "다음 회의에서 DAU 500 넘으면" 켜는 <strong>스위치</strong>로 남겨둔다. 지금 켜면 빈 가게에 간판값만 낸다.</p>
+    <p><strong>⑤수익 경로</strong>: 공유 카드 → 신규 유입 CAC 0원 → DAU 축적 → <em>그제서야</em> 리워드 광고(A) 스위치 ON으로 직접수익 발생. 즉 오늘 박는 건 "수익 1줄"이 아니라 <strong>수익의 깔때기 입구</strong>다.</p>
+    <p><strong>⑥선제 방어 + 시스템화</strong>: 점수 조작? MVP는 서버 검증 0 → 공유 카드에 "비공식 기록"이라 못 박고 리더보드는 다음 단계로(강체크 안건과 충돌 회피). 시스템화 = 공유율(공유/게임오버), 재방문율을 day1부터 기록 → DAU 500 도달 시 광고 A 자동 검토 트리거.</p>
+    <p style="color:var(--c-wild);"><strong>적용 원칙 #2(전제 의심: "무료=광고"를 깸) / 당긴 레버 경쟁+매몰비용+사회적증거 / 수익 경로 CAC↓(공유 바이럴) → 후행 광고수익</strong></p>
+  </div>
+</div>
+
+<div class="turn designer">
+  <div class="who"><span class="emoji">🎨</span> 강디</div>
+  <div class="bubble">
+    <p><strong>현재 활성 디자인 스타일: #1 — Crowny Class</strong> (출처: <code>styles/01-crowny-class.md</code>)</p>
+    <p>다만 이건 <em>게임</em>입니다. 문서 §18 룰대로 주제에 맞는 테마를 먼저 제안합니다 — <strong>게임·엔터: Primary <code>#EF4444</code>(레드) → Secondary <code>#FACC15</code>(옐로)</strong>. 이유: 흥분·도파민·즉각 보상감. 그라데이션 각도 135deg·radius·shadow·spacing·폰트(Pretendard)·아이콘(Lucide)은 <strong>토큰 그대로</strong> 두고 <strong>브랜드 두 색만</strong> 갈아끼웁니다. (기본 보라/분홍으로 갈 거면 한마디만 주세요 — 즉시 롤백.)</p>
+
+    <h3>① 사용자 목표</h3>
+    <p>"잠깐 들어왔다가 <strong>10초 안에 한 판 끝나고, 손이 자동으로 '한 판 더'를 누른다.</strong>" 게임 끝에서 사용자가 <em>그만둘지 / 다시 할지</em>를 즉시 고르게 한다. (아뱅이 잡은 매몰비용·최고기록 훅과 정합.)</p>
+
+    <h3>② 흐름 (분기 ≤2 · 단계 ≤3)</h3>
+    <p><strong>추천 변주 = "원-패들 라이즈(One-Paddle Rise)"</strong>. 클래식 2인 퐁은 상대(친구·AI)·매칭이 필요해 첫 10초가 안 나옵니다. 대신 <strong>벽 + 패들 하나 + 점점 빨라지는 공</strong> — 모바일 한 손가락으로 패들을 좌우로 끌어 공을 계속 받아치고, 받아칠 때마다 +1점·공 가속. 놓치면 끝. 매칭·튜토리얼 0, 첫 터치 즉시 게임 시작. "한 판 더"가 구조적으로 강제됩니다(짧고·내 실력 탓·기록 갱신 욕구).</p>
+    <svg viewBox="0 0 720 130" width="720" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard Variable, sans-serif">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EF4444"/><stop offset="1" stop-color="#FACC15"/></linearGradient></defs>
+      <rect x="10" y="35" width="150" height="60" rx="16" fill="#1B1D21"/><text x="85" y="62" fill="#fff" font-size="16" text-anchor="middle" font-weight="700">탭 = 즉시 시작</text><text x="85" y="82" fill="#9CA3AF" font-size="16" text-anchor="middle">메뉴 1탭</text>
+      <text x="178" y="70" font-size="20" fill="#6B7280">→</text>
+      <rect x="200" y="35" width="170" height="60" rx="16" fill="#1B1D21"/><text x="285" y="62" fill="#fff" font-size="16" text-anchor="middle" font-weight="700">받아치기 루프</text><text x="285" y="82" fill="#9CA3AF" font-size="16" text-anchor="middle">+1점·가속 (HUD)</text>
+      <text x="388" y="70" font-size="20" fill="#6B7280">→</text>
+      <rect x="410" y="35" width="160" height="60" rx="16" fill="url(#g)"/><text x="490" y="62" fill="#fff" font-size="16" text-anchor="middle" font-weight="700">놓침 = 게임오버</text><text x="490" y="82" fill="#fff" font-size="16" text-anchor="middle" opacity="0.85">점수·최고기록</text>
+      <text x="588" y="70" font-size="20" fill="#6B7280">↺</text>
+      <rect x="610" y="35" width="100" height="60" rx="16" fill="#1B1D21" stroke="#FACC15" stroke-width="2"/><text x="660" y="70" fill="#FACC15" font-size="16" text-anchor="middle" font-weight="700">한 판 더</text>
+    </svg>
+    <table>
+      <tr><th>단계</th><th>이탈 원인</th><th>측정 지표</th></tr>
+      <tr><td>시작</td><td>로딩 김·조작법 불명</td><td>탭→첫 랠리 도달률, TTI&lt;2s</td></tr>
+      <tr><td>받아치기</td><td>조작 응답 둔함·너무 빨리 어려움</td><td>평균 랠리 수·세션당 점수</td></tr>
+      <tr><td>게임오버</td><td>"한 판 더" 약함·기록 자랑 욕구 없음</td><td><strong>재시작률(핵심)</strong>·세션당 판 수</td></tr>
+    </table>
+    <p><strong>조작 결론(모바일 우선):</strong> 터치=패들 좌우 드래그(공 따라 손가락), 마우스=커서 X추적, 키보드=←→. 한 입력 모델(가로 위치 1축)로 3기기 통일 → 강개발 분기 최소.</p>
+
+    <h3>③ 시각 위계</h3>
+    <p>게임 화면은 <strong>공·패들이 1순위</strong>(검은 캔버스 위 옐로 공·레드 패들이 가장 밝게 튐), HUD 점수 2순위(상단·흰색). 메뉴·게임오버 화면에서만 <strong>그라데이션 CTA("게임 시작"/"한 판 더")가 1순위</strong> — 화면에서 가장 크고 빛나는 단 하나.</p>
+
+    <h3>④ 기술 베이스 + 컴포넌트 + 상태</h3>
+    <p><strong>HTML5 Canvas 단일 페이지(SPA) 확정.</strong> 게임 보드는 <code>&lt;canvas&gt;</code> 60fps 렌더, 그 위/아래 메뉴·HUD·게임오버는 <strong>DOM 오버레이</strong>(Crowny 토큰 CSS 그대로). 즉 게임픽셀=Canvas, UI=토큰 DOM. 프레임워크 0(§19 순수 CSS).</p>
+    <table>
+      <tr><th>상태</th><th>화면</th></tr>
+      <tr><td><strong>empty(메뉴)</strong></td><td>로고 + 최고기록 0 + 그라데이션 "게임 시작" 버튼</td></tr>
+      <tr><td><strong>loading</strong></td><td>Canvas 위 옐로 스피너(<code>loader</code>) — 에셋 0에 가까워 거의 안 보임</td></tr>
+      <tr><td><strong>playing</strong></td><td>HUD(현재 점수·최고기록) + Canvas, 우상단 일시정지(<code>pause</code>)</td></tr>
+      <tr><td><strong>gameover</strong></td><td>반투명 오버레이 + 점수·최고기록 + "한 판 더"(그라데이션) + "공유"(아웃라인)</td></tr>
+      <tr><td><strong>error</strong></td><td>Canvas 미지원 시 카드 안내 "최신 브라우저에서 열어주세요" + <code>refresh-cw</code></td></tr>
+    </table>
+
+    <h3>⑤ 토큰 매핑 (폰트 전부 ≥16px)</h3>
+    <table>
+      <tr><th>요소</th><th>토큰</th></tr>
+      <tr><td>게임 캔버스 배경</td><td><code>--dark-bg #1B1D21</code></td></tr>
+      <tr><td>공</td><td><code>--secondary #FACC15</code></td></tr>
+      <tr><td>패들</td><td><code>--primary #EF4444</code></td></tr>
+      <tr><td>"게임 시작"/"한 판 더" CTA</td><td><code>--gradient</code> + <code>--radius-md(10px)</code> + 호버 <code>--shadow-primary</code></td></tr>
+      <tr><td>메뉴·게임오버 카드</td><td><code>--light-card</code> 또는 다크오버레이 + <code>--radius-xl(16px)</code></td></tr>
+      <tr><td>HUD 현재 점수</td><td><code>--font-3xl(32px)</code> / 700</td></tr>
+      <tr><td>최고기록·라벨</td><td><code>--font-md(16px)</code> / <code>--text-secondary</code></td></tr>
+      <tr><td>로고 텍스트</td><td>Agbalumo (장식 한정)</td></tr>
+    </table>
+
+    <h3>⑥ 강개발 핸드오프</h3>
+    <ul>
+      <li><strong>화면 3장만:</strong> 메뉴 → 플레이(Canvas+HUD) → 게임오버 오버레이. 라우팅 없이 상태 전환(<code>state: menu|playing|gameover</code>).</li>
+      <li><strong>입력 1축 통일:</strong> 패들 X = clamp(터치/마우스/키보드). 3기기 같은 핸들러.</li>
+      <li><strong>최고기록 = localStorage</strong> (서버·개인정보 0 — 강체크 리스크 안건과 정합).</li>
+      <li><strong>토큰 파일 1개:</strong> §15 변수 + 게임 테마 오버라이드(레드/옐로)를 <code>styles/tokens.css</code> 한 파일에. Canvas는 JS에서 <code>getComputedStyle</code>로 같은 토큰 읽어 칠함 → 색 단일 출처.</li>
+      <li>gameover 진입 시 0.3s 페이드(<code>--transition-slow</code>), "한 판 더"는 즉시 포커스 가능.</li>
+    </ul>
+    <p><strong>체크리스트 ✓</strong> 흐름 먼저(단계 3·분기 0~1) / 임의 HEX 0(테마는 §18 두 색만 교체) / 폰트 전부 ≥16px / loading·error·empty·gameover 4상태 명시 / Pretendard·Agbalumo·Lucide 외 도입 0 / 모바일(터치) 우선 + 3기기 1축 통일.</p>
+  </div>
+</div>
+
+<div class="turn qa">
+  <div class="who"><span class="emoji">🔍</span> 강체크</div>
+  <div class="bubble">
+    <p><strong>① 검증 대상</strong>: 코드 0줄 기획 단계라 "동작 검증"은 불가. 대신 <em>지금 박아두지 않으면 나중에 못 박는</em> 두 가지 — (A) 안건4 웹게임 최소 리스크, (B) 안건1 코어루프가 "첫 10초 리트라이"를 실제로 보장하는지 엣지 관점. 23은 "코드 들어가기 전에 미리 박을 수용 기준"으로 적는다.</p>
+
+    <p><strong>② 테스트 케이스 / 수용 기준 (기획 단계 선박기)</strong></p>
+    <table>
+      <tr><th>구분</th><th>케이스</th><th>수용 기준 (PASS 조건)</th></tr>
+      <tr><td>골든</td><td>로딩 → 첫 입력 → 1실점 → "한 판 더" 노출 → 재시작</td><td>새로고침 없이 10초 내 한 사이클 완주. 재시작 시 점수 0 리셋.</td></tr>
+      <tr><td>엣지1</td><td>모바일 터치 — 패들 조작</td><td>드래그/탭 둘 중 하나로 1초 내 패들 반응. 멀티터치 시 첫 터치만 인식(고스트 패들 금지).</td></tr>
+      <tr><td>엣지2</td><td>화면 회전(세로↔가로)</td><td>회전 시 Canvas 리사이즈, 공/패들 좌표 비율 유지(게임 깨짐·공 화면밖 이탈 금지).</td></tr>
+      <tr><td>엣지3</td><td>저사양/백그라운드 복귀</td><td>탭 비활성 후 복귀 시 공 순간이동(deltaTime 누적 폭주) 금지. 30fps에서도 충돌판정 통과.</td></tr>
+      <tr><td>엣지4</td><td>리더보드 점수 제출</td><td>비정상 점수(음수·정수범위 초과·물리적 불가능 값) 거부. 제출 실패 시 게임은 계속 진행.</td></tr>
+      <tr><td>회귀</td><td>스킨/광고 붙인 뒤 코어루프</td><td>수익 기능 추가가 골든 패스의 "10초 리트라이"를 깨지 않음 — 변경마다 골든 재확인.</td></tr>
+    </table>
+
+    <p><strong>③ 결과 + 증거</strong>: 산출물 없음 → 측정 불가. 위 수용 기준을 <em>강개발 첫 구현의 Definition of Done</em>으로 못 박을 것을 권고. 특히 엣지3(deltaTime 폭주)·엣지2(회전)는 "나중에 발견되면 코어루프 전체 재작성"이라 지금 못 박아야 한다.</p>
+
+    <p><strong>④ 리스크 (위치·악용 시나리오·우회안)</strong></p>
+    <table>
+      <tr><th>항목</th><th>심각도</th><th>악용/실패 시나리오</th><th>우회안 (권장)</th></tr>
+      <tr><td>클라이언트 점수 → 리더보드 직신뢰</td><td>🔴</td><td>JS 콘솔/요청변조로 점수 9999999 제출. <strong>시즌패스(수익)와 엮이면</strong> 보상 부정취득 → 정상 유저 이탈.</td><td>MVP는 <strong>리더보드를 "로컬 베스트(localStorage)"로 한정</strong> → 서버·수익 비연동. 글로벌 랭킹 도입 시점에만 서버 검증(시드 기반 리플레이 재현 or 입력 로그 검증) 추가. 즉, <em>치트 위험을 수익과 분리</em>.</td></tr>
+      <tr><td>개인정보 0수집 원칙 가능성</td><td>🟡</td><td>닉네임 자유입력 = 실명/연락처/욕설 유입 가능. 광고 SDK는 동의 없이 기기ID·IP 수집 → 개인정보보호법·GDPR 동의 의무 발생 가능성.</td><td>닉네임 = <strong>선택·필명 가이드(실명 금지 안내)+금칙어 필터</strong>. 게임 로직 자체는 PII 0수집 유지. 광고/분석 SDK 도입 시 <strong>최초 진입 동의 배너+개인정보처리방침 1장</strong> 필수(위법 가능성 → 법무 검토 권고, 단정 X).</td></tr>
+      <tr><td>외부 의존성(광고SDK·Pretendard CDN·분석)</td><td>🟡</td><td>광고/CDN 차단(애드블록·망 차단)·다운 시 폰트 깨짐·게임 로딩 블로킹 가능. 분석 도구가 무동의 트래킹 시 규제 리스크.</td><td>Pretendard는 <strong>self-host(폰트 번들 동봉)+system-ui 폴백</strong>으로 CDN 의존 제거. 광고 SDK는 <strong>비동기·실패시 게임 진행 보장(광고 안 떠도 플레이 가능)</strong>. 분석은 무동의 시 익명·집계 전용 도구로 한정.</td></tr>
+      <tr><td>모바일 터치/회전/저사양 코어루프 깨짐</td><td>🟡</td><td>멀티터치 고스트 패들, 회전 시 공 이탈, 백그라운드 복귀 deltaTime 폭주 → "첫 10초 리트라이" 자체가 성립 안 됨.</td><td>위 ② 엣지1~3을 <strong>구현 DoD에 포함</strong>. requestAnimationFrame + deltaTime 상한(clamp), 첫 터치만 추적, 회전 리사이즈 핸들러를 1차 구현 범위에 넣기.</td></tr>
+      <tr><td>리더보드 점수 입력 검증 부재</td><td>🟢</td><td>당장은 로컬이라 영향 적으나, 서버 전환 시 미검증이면 즉시 🔴로 승격.</td><td>지금부터 점수에 <strong>이론적 상한·증가율 sanity check</strong> 클라이언트단 1차 방어 + 서버 도입 시 2차.</td></tr>
+    </table>
+
+    <p><strong>⑤ 사고 대응 한 줄</strong>: 리더보드 치트 발견 → ① 해당 점수 무효·시즌패스 보상 회수 ② 서버 검증 강제 전환 ③ 클라 점수 단독 신뢰 코드 폐기. (지금 "로컬 한정"으로 가면 이 사고 자체가 발생 불가 — 그게 우회안의 핵심.)</p>
+
+    <p><strong>⑥ 배포 권고</strong>: 코어루프 1개 + <strong>로컬 베스트 리더보드</strong> + <strong>self-host 폰트</strong> + <strong>광고 실패시 진행 보장</strong>까지면 MVP로 안전. 서버 글로벌 랭킹·시즌패스를 코어루프와 동시에 붙이는 것은 <em>치명 리스크(🔴)</em>라 보류 권고 — 광고/스킨 수익부터, 랭킹 수익은 검증 설계 후.</p>
+  </div>
+</div>
+
+<!-- TURNS_END -->
+
+</main>
+
+<section class="summary">
+  <h2>🎯 강팀장 마감 요약 — 텔레그램으로도 발송됨</h2>
+  <p style="color: var(--muted); font-size: 13px; margin-top: 0;">
+    강팀장은 회의 마감 시 아래 SUMMARY 블록을 *반드시* 채운다.
+    이 안의 내용이 텔레그램 메시지 본문으로 그대로 전송된다.
+  </p>
+  <!-- SUMMARY_START -->
+  <div class="block">
+    <h3>결정</h3>
+    <ul>
+      <li><strong>코어 루프</strong> → 퐁 변주 = <strong>"원-패들 라이즈(One-Paddle Rise)"</strong>. 벽+패들 1개+가속하는 공, 한 손가락 1축 조작, 놓치면 즉시 게임오버 → "한 판 더". 매칭·튜토리얼 0.</li>
+      <li><strong>기술 베이스</strong> → <strong>HTML5 Canvas 단일 페이지(SPA)</strong>, 프레임워크 0. 게임=Canvas 60fps, UI(메뉴·HUD·게임오버)=Crowny 토큰 DOM 오버레이. 화면 3장(menu/playing/gameover).</li>
+      <li><strong>디자인 테마</strong> → Crowny Class 토큰 유지 + 게임·엔터 <strong>브랜드 2색만 교체(레드#EF4444 / 옐로#FACC15)</strong>. 토큰은 <code>styles/tokens.css</code> 단일 출처, Canvas도 getComputedStyle로 같은 토큰 사용.</li>
+      <li><strong>수익 1줄</strong> → MVP는 <strong>결제·광고 0줄</strong>. "게임오버 = 최고기록 + 1탭 공유 카드"로 <strong>CAC 0원 바이럴</strong>을 깔때기 입구로 깐다. 리워드 광고("이어하기")는 <strong>DAU 500 도달 시 켜는 스위치</strong>로 후행.</li>
+      <li><strong>리스크 차단</strong> → 최고기록은 <strong>localStorage 로컬 베스트만</strong>(서버 랭킹·개인정보 0). Pretendard self-host, 광고 실패해도 게임 진행 보장.</li>
+    </ul>
+  </div>
+  <div class="block">
+    <h3>미결정 / 다음 회의 안건</h3>
+    <ul>
+      <li><strong>서버 글로벌 리더보드 + 시즌패스</strong> → 강체크 🔴(클라 점수 직신뢰 시 치트가 수익과 결합). DAU·바이럴 지표 확보 후 "서버 점수검증" 설계와 함께 별도 회의.</li>
+      <li><strong>게임 테마 색</strong> → 레드/옐로로 갈지, 기본 보라/분홍 유지할지 CEO 한마디로 확정(강디는 즉시 롤백 가능).</li>
+      <li><strong>공유 카드 형식</strong>(캔버스 캡처 이미지 vs OG 링크) → 강디·강개발 다음 회의.</li>
+    </ul>
+  </div>
+  <div class="block">
+    <h3>다음 액션</h3>
+    <ul>
+      <li><strong>[강개발]</strong> 원-패들 라이즈 코어 루프 첫 구현 — 화면 3장 상태머신 + 입력 1축 통일 + localStorage 최고기록. <em>게이트: 엣지(멀티터치 고스트패들·화면회전 공이탈·백그라운드 복귀 deltaTime 폭주) 3종을 DoD에 선반영</em>.</li>
+      <li><strong>[강디]</strong> <code>styles/tokens.css</code> 1파일 작성(§15 변수 + 게임 테마 오버라이드) + 화면 3장 목업.</li>
+      <li><strong>[강체크]</strong> 첫 구현 후 골든+엣지 검증, 광고 실패 시 게임 진행 보장 확인.</li>
+      <li><strong>[CEO 결정]</strong> ① 게임 테마 색(레드·옐로 vs 보라·분홍) ② "원-패들 라이즈" 변주 승인 여부 — 이 둘만 정하면 강개발 착수.</li>
+    </ul>
+  </div>
+  <!-- SUMMARY_END -->
+</section>
+
+<section class="closing">
+  <h2>회의 마무리 — 목업 보고 한 마디씩</h2>
+  <iframe src="mockup.html" title="화면 목업"></iframe>
+  <div class="final-comments">
+    <!-- 디자인/화면 안건이 있었던 회의는 *모든 참석자가* 여기 한 줄씩 남기고 종료 -->
+    <!-- 예:
+    <div class="comment ui"><span class="who">🎨 강디</span>: 결제 단계 CTA 위계 한 단 더 약하게.</div>
+    -->
+    <!-- COMMENTS_START -->
+    <div class="comment pm"><span class="who">🎯 강팀장</span>: 한 회의 한 결정 — "원-패들 라이즈 + Canvas SPA + 공유카드". CEO는 테마색과 변주만 OK 주면 강개발 착수.</div>
+    <div class="comment designer"><span class="who">🎨 강디</span>: 게임픽셀=Canvas, UI=토큰 DOM. 색은 단일 출처 한 파일에서. 보라/분홍 원하면 한마디면 즉시 롤백.</div>
+    <div class="comment marketer"><span class="who">🔥 아뱅</span>: 광고는 빈 가게 간판값. 지금은 공유카드로 손님부터. DAU 500에서 광고 스위치 ON.</div>
+    <div class="comment qa"><span class="who">🔍 강체크</span>: 리더보드는 로컬 베스트로 시작 — 치트와 수익 분리. 서버 랭킹은 점수검증 설계 후에. 조건부 통과.</div>
+    <!-- COMMENTS_END -->
+  </div>
+</section>
+
+<footer>강팀 · Crowny Class 디자인 시스템</footer>
+</body>
+</html>

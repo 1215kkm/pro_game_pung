@@ -1,0 +1,50 @@
+/* 튕기기 게임 테마 토큰 — Crowny Class 시스템 §18 게임·엔터 (레드/옐로) 오버라이드.
+   ⚠️ 이 파일의 HEX 는 활성 디자인 스타일(#1 crowny-class)에 등록된 것만 사용.
+   부수 색(캔버스 셰이딩·파티클 등)은 여기 두지 말고 game.js 상수로. */
+:root {
+  /* ===== 게임 테마 브랜드 컬러 (게임·엔터: 레드 → 옐로) ===== */
+  --primary: #EF4444;
+  --primary-rgb: 239, 68, 68;
+  --secondary: #FACC15;
+  --gradient: linear-gradient(135deg, #EF4444 0%, #FACC15 100%);
+
+  /* ===== 공 굴절 그라데이션 (보라→분홍, 스펙 지정) ===== */
+  --ball-refract-from: #8A38F5;
+  --ball-refract-to:   #D53A6B;
+
+  /* ===== 캔버스 / 다크 영역 ===== */
+  --canvas-bg: #1B1D21;
+  --dark-bg: #1B1D21;
+  --dark-tertiary: #2B2D35;
+  --dark-border: #3D3D54;
+
+  /* ===== 텍스트 ===== */
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+
+  /* ===== 모서리 ===== */
+  --radius-md: 10px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ===== 간격 (8px 그리드) ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ===== 폰트 (최소 16px) ===== */
+  --font-sm:  16px;
+  --font-md:  16px;
+  --font-lg:  18px;
+  --font-xl:  20px;
+  --font-2xl: 26px;
+  --font-3xl: 32px;
+  --font-family-base: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ===== 트랜지션 ===== */
+  --transition-fast:   0.15s ease;
+  --transition-normal: 0.2s ease;
+}
