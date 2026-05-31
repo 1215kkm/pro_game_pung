@@ -862,8 +862,8 @@
 
   const STICK_PRICE = 50;
 
-  // ---------- Web Audio ----------
-  let actx = null, masterGain = null, musicGain = null;
+  // ---------- Web Audio (효과음용) ----------
+  let actx = null, masterGain = null;
   function ensureAudio() {
     if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -872,114 +872,54 @@
     masterGain = actx.createGain();
     masterGain.gain.value = muted ? 0 : 0.9;
     masterGain.connect(actx.destination);
-    musicGain = actx.createGain();
-    musicGain.gain.value = 0.0001;
-    musicGain.connect(masterGain);
   }
-  function setMasterMute() { if (masterGain) masterGain.gain.value = muted ? 0 : 0.9; }
+  function setMasterMute() {
+    if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
+    if (bgmEl) bgmEl.muted = muted;
+  }
 
-  // ---------- 절차적 배경 음악 ----------
-  const music = { on: false, nextNoteTime: 0, step: 0, timer: null };
-  function musicIntensity() {
-    if (masterMode) return 1;
-    return Math.max(0, Math.min(1, (stage - 1) / (TOTAL_STAGES - 1)));
-  }
-  function musicBPM() {
-    if (masterMode) return 200;
-    const t = Math.pow(musicIntensity(), 1.15);
-    return 88 + t * 100;
-  }
-  const BASS_HZ = [98.0, 110.0, 130.81, 146.83, 110.0, 98.0, 130.81, 164.81];
-
-  function scheduleKick(t, intensity) {
-    const o = actx.createOscillator(); const g = actx.createGain();
-    o.type = 'sine';
-    const startHz = 150 + intensity * 110;
-    o.frequency.setValueAtTime(startHz, t);
-    o.frequency.exponentialRampToValueAtTime(45, t + 0.10);
-    const peak = 0.55 + intensity * 0.35;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-    o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.2);
-  }
-  function scheduleHat(t, intensity) {
-    const len = Math.floor(actx.sampleRate * 0.04);
-    const buf = actx.createBuffer(1, len, actx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    const src = actx.createBufferSource(); src.buffer = buf;
-    const hp = actx.createBiquadFilter(); hp.type = 'highpass';
-    hp.frequency.value = 6000 + intensity * 3000;
-    const g = actx.createGain();
-    g.gain.value = 0.06 + intensity * 0.14;
-    src.connect(hp); hp.connect(g); g.connect(musicGain); src.start(t);
-  }
-  function scheduleBass(t, hz, intensity, dur) {
-    const o = actx.createOscillator(); const g = actx.createGain();
-    o.type = intensity > 0.45 ? 'sawtooth' : 'triangle';
-    o.frequency.setValueAtTime(hz, t);
-    const lp = actx.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(360 + intensity * 2600, t);
-    lp.Q.value = 2 + intensity * 8;
-    const peak = 0.12 + intensity * 0.14;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(lp); lp.connect(g); g.connect(musicGain);
-    o.start(t); o.stop(t + dur + 0.05);
-  }
-  function scheduleStab(t, intensity) {
-    const hz = 440 * Math.pow(2, (Math.floor(Math.random() * 5)) / 12) * (1 + intensity * 0.5);
-    const o = actx.createOscillator(); const g = actx.createGain();
-    o.type = 'sawtooth'; o.frequency.value = hz;
-    const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200 + intensity * 4000;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.10 + intensity * 0.10, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    o.connect(lp); lp.connect(g); g.connect(musicGain);
-    o.start(t); o.stop(t + 0.15);
-  }
-  function musicTick() {
-    if (!music.on || !actx) return;
-    const secPerStep = 60 / musicBPM() / 4;
-    while (music.nextNoteTime < actx.currentTime + 0.12) {
-      const t = music.nextNoteTime;
-      const inten = musicIntensity();
-      const s = music.step % 16;
-      if (s === 0 || s === 8) scheduleKick(t, inten);
-      else if (inten > 0.35 && (s === 4 || s === 12)) scheduleKick(t, inten);
-      else if (inten > 0.7 && (s === 6 || s === 14) && Math.random() < 0.6) scheduleKick(t, inten);
-      const hatEvery = inten > 0.55 ? 1 : (inten > 0.25 ? 2 : 4);
-      if (s % hatEvery === 0) scheduleHat(t, inten);
-      const bassEvery = inten > 0.6 ? 2 : 4;
-      if (s % bassEvery === 0) {
-        const hz = BASS_HZ[(music.step / bassEvery | 0) % BASS_HZ.length];
-        scheduleBass(t, hz, inten, secPerStep * bassEvery * 0.9);
-      }
-      if (inten > 0.7 && (s === 2 || s === 10) && Math.random() < (inten - 0.7) * 3) scheduleStab(t, inten);
-      music.step++;
-      music.nextNoteTime += secPerStep;
+  // ---------- 배경 음악 (실제 트랙 · OpenGameArt CC-BY 3.0) ----------
+  // 파일은 docs/music/ 에 두고 play.html 기준 상대경로로 참조한다(공백은 %20 인코딩).
+  // 3곡을 셔플 순환 재생, 플레이 중에만 재생(메뉴/일시정지 시 일시정지 → 이어듣기).
+  // mp3/m4a(AAC)로 통일 — iOS 사파리는 .ogg 미지원이라 .ogg 원본을 m4a로 변환해 사용.
+  const BGM_TRACKS = [
+    'music/Fun%20Adventure.mp3', // Fun Adventure — Hitctrl
+    'music/funbgm102614.m4a',    // Fun BGM — syncopika
+    'music/spring%20day.m4a',    // spring day (BGM Fun Vol.7) — syncopika
+  ];
+  let bgmEl = null, bgmOrder = [], bgmIdx = 0;
+  function bgmShuffle() {
+    bgmOrder = BGM_TRACKS.slice();
+    for (let i = bgmOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [bgmOrder[i], bgmOrder[j]] = [bgmOrder[j], bgmOrder[i]];
     }
-    music.timer = setTimeout(musicTick, 25);
+    bgmIdx = 0;
+  }
+  function bgmLoadCurrent() { bgmEl.src = bgmOrder[bgmIdx]; }
+  function ensureBgm() {
+    if (bgmEl) return;
+    bgmEl = new Audio();
+    bgmEl.preload = 'auto';
+    bgmEl.volume = 0.55;
+    bgmEl.muted = muted;
+    bgmShuffle();
+    bgmEl.addEventListener('ended', () => { // 한 곡 끝나면 다음 곡(끝까지 가면 다시 셔플)
+      bgmIdx++;
+      if (bgmIdx >= bgmOrder.length) bgmShuffle();
+      bgmLoadCurrent();
+      bgmEl.play().catch(() => {});
+    });
+    bgmLoadCurrent();
   }
   function startMusic() {
-    if (!actx || music.on) return;
-    music.on = true; music.step = 0;
-    music.nextNoteTime = actx.currentTime + 0.08;
-    musicGain.gain.cancelScheduledValues(actx.currentTime);
-    musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), actx.currentTime);
-    musicGain.gain.exponentialRampToValueAtTime(0.5, actx.currentTime + 0.6);
-    musicTick();
+    ensureBgm();
+    bgmEl.muted = muted;
+    const p = bgmEl.play();
+    if (p && p.catch) p.catch(() => {}); // 자동재생 차단 시 조용히 무시
   }
   function stopMusic() {
-    music.on = false;
-    if (music.timer) { clearTimeout(music.timer); music.timer = null; }
-    if (musicGain && actx) {
-      musicGain.gain.cancelScheduledValues(actx.currentTime);
-      musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), actx.currentTime);
-      musicGain.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.3);
-    }
+    if (bgmEl) bgmEl.pause(); // 위치 유지 → 다음 시작 때 이어듣기
   }
 
   function playBoing(freq, pan) {
@@ -2233,7 +2173,7 @@
     } else {
       lastTime = performance.now();
       if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
-      if (music.on && actx && music.nextNoteTime < actx.currentTime) music.nextNoteTime = actx.currentTime + 0.05;
+      if (state === STATE.PLAYING && bgmEl && bgmEl.paused && !muted) bgmEl.play().catch(() => {});
     }
   });
 
