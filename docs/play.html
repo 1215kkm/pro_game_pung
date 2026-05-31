@@ -130,6 +130,10 @@
   .crop-canvas { touch-action: none; border-radius: var(--radius-md); background: #000;
     width: 86vw; max-width: 360px; height: 86vw; max-height: 360px; }
   .crop-zoom { width: 86vw; max-width: 360px; accent-color: var(--primary); }
+  .crop-style { display: flex; gap: var(--spacing-sm, 8px); }
+  .crop-style.hidden { display: none; }
+  .crop-style .btn { padding: 8px 18px; }
+  .crop-style .btn[aria-pressed="true"] { background: var(--gradient); color: #fff; }
 
   /* 크레딧 */
   .credits-list { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: var(--spacing-md); max-height: 60vh; overflow-y: auto; }
@@ -369,6 +373,10 @@
   <h2 class="title" style="font-size:var(--font-2xl)">사진 맞추기</h2>
   <p class="subtitle">드래그로 이동 · 두 손가락(또는 아래 슬라이더)으로 확대/축소해 보여질 부분을 고르세요.</p>
   <canvas id="cropCanvas" class="crop-canvas"></canvas>
+  <div class="crop-style hidden" id="cropStyleRow">
+    <button class="btn btn-ghost" id="cropFlat" aria-pressed="true">자르기</button>
+    <button class="btn btn-ghost" id="cropConvex" aria-pressed="false">볼록 3D</button>
+  </div>
   <input type="range" id="cropZoom" class="crop-zoom" min="0" max="1" step="0.001" value="0" aria-label="확대/축소" />
   <div class="gameover-row">
     <button class="btn btn-primary" id="cropApply">적용</button>
@@ -449,6 +457,9 @@
   const elCropZoom = $('cropZoom');
   const elCropApply = $('cropApply');
   const elCropCancel = $('cropCancel');
+  const elCropStyleRow = $('cropStyleRow');
+  const elCropFlat = $('cropFlat');
+  const elCropConvex = $('cropConvex');
   const elPauseBtn = $('pauseBtn');
   const elPause = $('pause');
   const elPauseResume = $('pauseResume');
@@ -2164,11 +2175,16 @@
   // 밖은 어둡게. 드래그=이동, 핀치/휠/슬라이더=확대. 적용 시 프레임 영역만 잘라 dataURL 로 저장.
   const cctx = elCropCanvas.getContext('2d');
   let cropImg = null, cropShape = 'circle', cropApplyCb = null;
+  let cropStyle = 'flat';          // 'flat'(자르기) | 'convex'(3D 볼록) — 공 사진 전용
+  let cropInteracting = false;     // 드래그/줌 중에는 가벼운 평면 미리보기
   let cropES = 320, cropFrame = { x: 0, y: 0, w: 0, h: 0 };
   let cropScale = 1, cropMin = 1, cropMax = 1, cropImgX = 0, cropImgY = 0;
 
   function cropOpen(img, shape, aspect, cb) {
     cropImg = img; cropShape = shape; cropApplyCb = cb;
+    cropStyle = 'flat'; cropInteracting = false;
+    elCropStyleRow.classList.toggle('hidden', shape !== 'circle'); // 3D 볼록은 공 사진만
+    cropSetStyleBtns();
     cropES = Math.round(Math.min(window.innerWidth * 0.86, 360));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     elCropCanvas.style.width = cropES + 'px'; elCropCanvas.style.height = cropES + 'px';
@@ -2194,6 +2210,64 @@
   }
   function cropHide() { elCropEditor.classList.add('hidden'); cropImg = null; cropApplyCb = null; }
 
+  function cropSetStyleBtns() {
+    elCropFlat.setAttribute('aria-pressed', String(cropStyle === 'flat'));
+    elCropConvex.setAttribute('aria-pressed', String(cropStyle === 'convex'));
+  }
+  // 현재 프레임/변환 → 원본 이미지 좌표계의 크롭 영역
+  function cropSrcRect() {
+    const f = cropFrame;
+    return { sx: (f.x - cropImgX) / cropScale, sy: (f.y - cropImgY) / cropScale, sw: f.w / cropScale, sh: f.h / cropScale };
+  }
+  // 공 사진: n×n 정사각으로 크롭, convex면 구면 매핑+셰이딩
+  function buildBallCanvas(n, convex) {
+    const r = cropSrcRect();
+    const cv = document.createElement('canvas'); cv.width = n; cv.height = n;
+    cv.getContext('2d').drawImage(cropImg, r.sx, r.sy, r.sw, r.sh, 0, 0, n, n);
+    if (convex) spherizeBall(cv);
+    return cv;
+  }
+  // 배경 사진: 화면비 사각형으로 크롭(긴 변 720)
+  function buildRectCanvas() {
+    const f = cropFrame, r = cropSrcRect();
+    let outW, outH;
+    if (f.w >= f.h) { outW = 720; outH = Math.round(720 * f.h / f.w); }
+    else { outH = 720; outW = Math.round(720 * f.w / f.h); }
+    const cv = document.createElement('canvas'); cv.width = outW; cv.height = outH;
+    cv.getContext('2d').drawImage(cropImg, r.sx, r.sy, r.sw, r.sh, 0, 0, outW, outH);
+    return cv;
+  }
+  // 정사각 캔버스를 반구(구체)에 매핑 — 중앙은 부풀고 가장자리는 말려 들어가 3D 공처럼.
+  function spherizeBall(cv) {
+    const n = cv.width, ctx = cv.getContext('2d');
+    const src = ctx.getImageData(0, 0, n, n).data;
+    const out = ctx.createImageData(n, n), o = out.data;
+    const R = n / 2, c = R, HALF_PI = Math.PI / 2;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const i = (y * n + x) * 4;
+        const nx = (x - c) / R, ny = (y - c) / R, rr = Math.sqrt(nx * nx + ny * ny);
+        if (rr > 1) { o[i + 3] = 0; continue; }                 // 원 밖은 투명(게임에서 원 클립으로 가려짐)
+        const f = rr > 1e-6 ? (Math.asin(rr) / HALF_PI) / rr : 0; // 구면(직교투영) 매핑 계수
+        let sxp = (c + (x - c) * f) | 0, syp = (c + (y - c) * f) | 0;
+        sxp = sxp < 0 ? 0 : sxp >= n ? n - 1 : sxp;
+        syp = syp < 0 ? 0 : syp >= n ? n - 1 : syp;
+        const j = (syp * n + sxp) * 4;
+        o[i] = src[j]; o[i + 1] = src[j + 1]; o[i + 2] = src[j + 2]; o[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(out, 0, 0);
+    // 3D 셰이딩: 좌상단 하이라이트 + 가장자리 음영(터미네이터)
+    ctx.save();
+    ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2); ctx.clip();
+    const g = ctx.createRadialGradient(c - R * 0.35, c - R * 0.4, R * 0.08, c, c, R);
+    g.addColorStop(0, 'rgba(255,255,255,0.5)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.5)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, n, n);
+    ctx.restore();
+  }
+
   function cropClamp() {
     const iw = cropImg.naturalWidth || cropImg.width, ih = cropImg.naturalHeight || cropImg.height;
     const dw = iw * cropScale, dh = ih * cropScale;
@@ -2214,8 +2288,19 @@
   }
   function cropDraw() {
     if (!cropImg) return;
+    const f = cropFrame;
+    // 볼록 3D: 정착 상태에서만 구면 미리보기(드래그/줌 중엔 평면으로 가볍게)
+    if (cropShape === 'circle' && cropStyle === 'convex' && !cropInteracting) {
+      const prev = buildBallCanvas(220, true);
+      cctx.clearRect(0, 0, cropES, cropES);
+      cctx.fillStyle = 'rgba(0,0,0,0.55)'; cctx.fillRect(0, 0, cropES, cropES);
+      cctx.drawImage(prev, f.x, f.y, f.w, f.h);
+      cctx.lineWidth = 2; cctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      cctx.beginPath(); cctx.arc(f.x + f.w / 2, f.y + f.h / 2, f.w / 2, 0, Math.PI * 2); cctx.stroke();
+      return;
+    }
     const iw = cropImg.naturalWidth || cropImg.width, ih = cropImg.naturalHeight || cropImg.height;
-    const dw = iw * cropScale, dh = ih * cropScale, f = cropFrame;
+    const dw = iw * cropScale, dh = ih * cropScale;
     cctx.clearRect(0, 0, cropES, cropES);
     cctx.drawImage(cropImg, cropImgX, cropImgY, dw, dh);        // 어둡게 깔리는 전체 이미지
     cctx.fillStyle = 'rgba(0,0,0,0.55)'; cctx.fillRect(0, 0, cropES, cropES);
@@ -2234,18 +2319,9 @@
   }
   function cropApply() {
     if (!cropImg || !cropApplyCb) { cropHide(); return; }
-    const f = cropFrame;
-    const sx = (f.x - cropImgX) / cropScale, sy = (f.y - cropImgY) / cropScale;
-    const sw = f.w / cropScale, sh = f.h / cropScale;          // 원본 이미지 좌표계의 크롭 영역
-    let outW, outH;
-    if (cropShape === 'rect') {
-      if (f.w >= f.h) { outW = 720; outH = Math.round(720 * f.h / f.w); }
-      else { outH = 720; outW = Math.round(720 * f.w / f.h); }
-    } else { outW = outH = 512; }
-    const cv = document.createElement('canvas'); cv.width = outW; cv.height = outH;
-    cv.getContext('2d').drawImage(cropImg, sx, sy, sw, sh, 0, 0, outW, outH);
+    const cv = cropShape === 'circle' ? buildBallCanvas(512, cropStyle === 'convex') : buildRectCanvas();
     let dataUrl;
-    try { dataUrl = cv.toDataURL('image/jpeg', cropShape === 'rect' ? 0.7 : 0.8); }
+    try { dataUrl = cv.toDataURL('image/jpeg', cropShape === 'circle' ? 0.85 : 0.7); }
     catch (err) { showShopMsg('사진을 읽지 못했어요'); cropHide(); return; }
     const cb = cropApplyCb;
     cropHide();
@@ -2261,6 +2337,7 @@
   }
   function cropDown(ev) {
     ev.preventDefault();
+    cropInteracting = true;
     if (ev.touches && ev.touches.length === 2) { cropPinchDist = cropTouchDist(ev); cropDrag = false; return; }
     cropDrag = true; const p = cropPt(ev); cropLastX = p.x; cropLastY = p.y;
   }
@@ -2281,7 +2358,7 @@
     cropImgX += p.x - cropLastX; cropImgY += p.y - cropLastY;
     cropLastX = p.x; cropLastY = p.y; cropClamp(); cropDraw();
   }
-  function cropUp() { cropDrag = false; cropPinchDist = 0; }
+  function cropUp() { cropDrag = false; cropPinchDist = 0; cropInteracting = false; cropDraw(); }
   function cropTouchDist(ev) {
     const a = ev.touches[0], b = ev.touches[1];
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -2394,9 +2471,12 @@
     cropSyncZoom();
   }, { passive: false });
   elCropZoom.addEventListener('input', () => {
-    const v = parseFloat(elCropZoom.value);
-    cropSetScale(cropMin * Math.pow(cropMax / cropMin, v));
+    cropInteracting = true;
+    cropSetScale(cropMin * Math.pow(cropMax / cropMin, parseFloat(elCropZoom.value)));
   });
+  elCropZoom.addEventListener('change', () => { cropInteracting = false; cropDraw(); });
+  elCropFlat.addEventListener('click', () => { cropStyle = 'flat'; cropSetStyleBtns(); cropDraw(); });
+  elCropConvex.addEventListener('click', () => { cropStyle = 'convex'; cropSetStyleBtns(); cropDraw(); });
   elCropApply.addEventListener('click', cropApply);
   elCropCancel.addEventListener('click', cropHide);
 
