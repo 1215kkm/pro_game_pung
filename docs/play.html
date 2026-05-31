@@ -924,26 +924,33 @@
   }
 
   // ---------- 효과음 샘플(파일) ----------
-  // 공이 바닥에 떨어질 때 — bubbles-single2.wav (실패음). 짧아서 Web Audio 버퍼로 디코드.
-  let sfxFallBuf = null;
-  function loadSfx() {
-    if (!actx || sfxFallBuf) return;
-    fetch('music/bubbles-single2.wav')
+  // 업로드한 wav 를 Web Audio 버퍼로 디코드해서 쓴다(짧고 겹쳐 재생 OK, 음소거 게인에 묶임).
+  let sfxFallBuf = null; // 공이 바닥에 떨어질 때 — bubbles-single2.wav
+  let sfxWinBuf = null;  // 3판마다 체크포인트 성공 — Win sound.wav
+  function loadSfxFile(url, set) {
+    fetch(url)
       .then((r) => r.arrayBuffer())
       .then((a) => actx.decodeAudioData(a))
-      .then((buf) => { sfxFallBuf = buf; })
-      .catch(() => {}); // 실패 시 아래 합성 낙하음으로 폴백
+      .then((buf) => set(buf))
+      .catch(() => {}); // 실패 시 폴백(합성음 또는 무음)
   }
+  function loadSfx() {
+    if (!actx) return;
+    if (!sfxFallBuf) loadSfxFile('music/bubbles-single2.wav', (b) => { sfxFallBuf = b; });
+    if (!sfxWinBuf) loadSfxFile('music/Win%20sound.wav', (b) => { sfxWinBuf = b; });
+  }
+  function playSample(buf, vol) {
+    if (!actx || muted || !buf) return;
+    const src = actx.createBufferSource();
+    src.buffer = buf;
+    const g = actx.createGain();
+    g.gain.value = vol == null ? 0.9 : vol;
+    src.connect(g); g.connect(masterGain); src.start();
+  }
+  function playWin() { playSample(sfxWinBuf, 0.9); }
   function playFall() {
     if (!actx || muted) return;
-    if (sfxFallBuf) { // 업로드한 wav 재생
-      const src = actx.createBufferSource();
-      src.buffer = sfxFallBuf;
-      const g = actx.createGain();
-      g.gain.value = 0.9;
-      src.connect(g); g.connect(masterGain); src.start();
-      return;
-    }
+    if (sfxFallBuf) { playSample(sfxFallBuf, 0.9); return; } // 업로드한 wav 재생
     // 폴백: 샘플 로드 전이면 기존 합성 낙하음(하강 톱니파)
     const t = actx.currentTime;
     const o = actx.createOscillator();
@@ -1261,6 +1268,7 @@
   function enterCheckpoint(clearedStage) {
     state = STATE.CHECKPOINT;
     stopMusic();
+    playWin(); // 3판마다 성공 효과음 (Win sound.wav)
     elCpTitle.textContent = clearedStage + '판 클리어!';
     elCheckpoint.classList.remove('hidden');
   }
