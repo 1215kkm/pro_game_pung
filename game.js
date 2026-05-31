@@ -1,45 +1,68 @@
-/* 튕기기 — 30판 정복 + 무한 마스터모드.
+/* 튕기기 — 30판 정복 + 무한 마스터모드 + 상점/스킨/배경/막대기.
    순수 JS + Canvas + Web Audio. 프레임워크/외부 라이브러리 0.
-   상태: menu → playing → gameover / win → (마스터모드는 다시 playing).
+   상태: menu → playing → (paused / checkpoint) → gameover / win.
 
-   30판 구조: 공을 한 번 받을 때마다 +1판(1캐치=1판). 30판째를 받으면 클리어.
-   판이 오를수록 받을 띠의 세로 높이가 지수형으로 줄어든다(1판=화면 전체, 30판=극소).
-   5판마다 공이 +1개 늘어 저글링이 된다 — 공 하나라도 바닥에 떨어지면 게임오버.
-   클리어 후 마스터모드: zone 최소 고정, 판 카운트 31,32… 무한 증가, 점수 경쟁.
-   배경 음악은 절차적 레이어로 판이 오를수록 BPM↑·공격적(톱니/디스토션)·급박.
+   난이도 레버: 속도(왕복시간 T) + 공 개수 + 공 크기. 받는 영역(존)은 넓게 고정.
+   대칭 발사: 판마다 g·v 를 계산해 올라감/내려옴 시간이 같다(부드러움).
+   잘 튕긴 공은 회색→흰색으로 익다가 터지며 코인을 준다. 코인으로 상점에서
+   스킨·배경·막대기를 산다. 막대기는 떨어지는 공을 자동으로 받아주는 패들.
 
-   색 상수: 캔버스 셰이딩·파티클용 부수 색은 tokens.css 가 아니라
-   여기 JS 상수로 둔다(스펙·훅 규칙). 브랜드 색은 CSS 변수에서 읽어 온다. */
+   색 상수: 캔버스 셰이딩·파티클·스킨·배경 색은 tokens.css 가 아니라
+   여기 JS 상수로 둔다(스펙·훅 규칙). 브랜드 색만 CSS 변수에서 읽어 온다. */
 'use strict';
 
 (function () {
   // ---------- DOM ----------
-  const canvas = document.getElementById('game');
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('game');
   const ctx = canvas.getContext('2d');
-  const elHud = document.getElementById('hud');
-  const elHudStage = document.getElementById('hudStage');
-  const elHudOf = document.getElementById('hudOf');
-  const elHudCombo = document.getElementById('hudCombo');
-  const elHudBest = document.getElementById('hudBest');
-  const elMenu = document.getElementById('menu');
-  const elMenuBest = document.getElementById('menuBest');
-  const elStart = document.getElementById('startBtn');
-  const elBlindToggle = document.getElementById('blindToggle');
-  const elMuteToggle = document.getElementById('muteToggle');
-  const elGameover = document.getElementById('gameover');
-  const elNewRecord = document.getElementById('newRecordBadge');
-  const elFinalScore = document.getElementById('finalScore');
-  const elGoBest = document.getElementById('goBest');
-  const elRetry = document.getElementById('retryBtn');
-  const elShare = document.getElementById('shareBtn');
-  const elMenuBtn = document.getElementById('menuBtn');
-  const elBlindBanner = document.getElementById('blindBanner');
-  const elWin = document.getElementById('winScreen');
-  const elWinCombo = document.getElementById('winCombo');
-  const elWinRetry = document.getElementById('winRetryBtn');
-  const elWinShare = document.getElementById('winShareBtn');
-  const elWinMenu = document.getElementById('winMenuBtn');
-  const elWinMaster = document.getElementById('winMasterBtn');   // 마스터모드 계속하기
+  const elHud = $('hud');
+  const elHudStage = $('hudStage');
+  const elHudOf = $('hudOf');
+  const elHudCombo = $('hudCombo');
+  const elHudBest = $('hudBest');
+  const elMenu = $('menu');
+  const elMenuBest = $('menuBest');
+  const elStart = $('startBtn');
+  const elBlindToggle = $('blindToggle');
+  const elMuteToggle = $('muteToggle');
+  const elGameover = $('gameover');
+  const elNewRecord = $('newRecordBadge');
+  const elFinalScore = $('finalScore');
+  const elGoBest = $('goBest');
+  const elRetry = $('retryBtn');
+  const elShare = $('shareBtn');
+  const elMenuBtn = $('menuBtn');
+  const elBlindBanner = $('blindBanner');
+  const elWin = $('winScreen');
+  const elWinCombo = $('winCombo');
+  const elWinRetry = $('winRetryBtn');
+  const elWinShare = $('winShareBtn');
+  const elWinMenu = $('winMenuBtn');
+  const elWinMaster = $('winMasterBtn');
+  // 상점 / 일시정지 / 체크포인트 / 스틱
+  const elShopBtn = $('shopBtn');
+  const elShop = $('shop');
+  const elShopCoins = $('shopCoins');
+  const elTabBalls = $('tabBalls');
+  const elTabBgs = $('tabBgs');
+  const elTabItems = $('tabItems');
+  const elGridBalls = $('gridBalls');
+  const elGridBgs = $('gridBgs');
+  const elGridItems = $('gridItems');
+  const elShopBack = $('shopBack');
+  const elPhotoInput = $('photoInput');
+  const elPauseBtn = $('pauseBtn');
+  const elPause = $('pause');
+  const elPauseResume = $('pauseResume');
+  const elPauseShopBtn = $('pauseShopBtn');
+  const elPauseMenu = $('pauseMenu');
+  const elCheckpoint = $('checkpoint');
+  const elCpTitle = $('cpTitle');
+  const elCpContinue = $('cpContinue');
+  const elCpStop = $('cpStop');
+  const elStickTray = $('stickTray');
+  const elStickMerge = $('stickMerge');
 
   // ---------- 브랜드 색 (CSS 변수에서 읽음) ----------
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -50,81 +73,406 @@
     refractTo: cssVar('--ball-refract-to') || '#D53A6B',
     bg: cssVar('--canvas-bg') || '#1B1D21',
   };
-  // 부수 색(셰이딩/파티클) — 스펙상 JS 상수로 둠
+  // 부수 색(셰이딩/파티클/스킨/배경) — 스펙상 JS 상수로 둠
   const SHADE = {
     glassEdge: 'rgba(255,255,255,0.85)',
     glassFaint: 'rgba(255,255,255,0.10)',
-    zoneFill: 'rgba(239,68,68,0.16)',
-    zoneEdge: 'rgba(250,204,21,0.55)',
+    zoneFill: 'rgba(239,68,68,0.13)',
+    zoneEdge: 'rgba(250,204,21,0.45)',
     zenDim: 'rgba(10,10,16,0.62)',
     shard: '#BFE3FF',
+    ripeGrey: '#9A9A9A',
+    coin: '#FFD24A',
+    stick: '#C9A66B',
+    stickDark: '#8A6D3B',
   };
 
   // ---------- 상태 ----------
-  const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, WIN: 3 };
+  const STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, WIN: 3, PAUSED: 4, CHECKPOINT: 5 };
   let state = STATE.MENU;
 
   let W = 0, H = 0, DPR = 1;
-  const GRAVITY = 1900;          // px/s^2 (CSS px 기준)
-  const MAX_DT = 1 / 30;         // 백그라운드 복귀 dt 폭주 방지
+  const MAX_DT = 1 / 30;          // 백그라운드 복귀 dt 폭주 방지
 
   // ----- 30판 구조 + 무한 마스터모드 -----
   const TOTAL_STAGES = 30;
-  const CATCHES_PER_STAGE = 1;   // 1캐치 = +1판 (30캐치 = 클리어)
-  // 띠 높이(화면 높이 대비). 1판=거의 전체, 30판=극소. 지수형(후반이 가파름).
-  const ZONE_MAX_H = 0.96;       // 1판: 화면 거의 전체
-  const ZONE_MIN_H = 0.045;      // 30판: 아주 얇은 띠
-  // 진행도 p(0~1)에 대한 곡선. 큰 지수 → 초반 완만, 후반(22~30판) 급가파름.
-  const ZONE_CURVE = 2.6;
-  function zoneFracForStage(stage) {
-    // 30판 이상(마스터모드)은 최소값 고정
-    const p = (Math.max(1, Math.min(TOTAL_STAGES, stage)) - 1) / (TOTAL_STAGES - 1); // 0..1
-    const eased = Math.pow(p, ZONE_CURVE);
-    return ZONE_MAX_H + (ZONE_MIN_H - ZONE_MAX_H) * eased;
+  const CATCHES_PER_STAGE = 1;    // 1캐치 = +1판
+
+  // ----- 난이도: 속도 곡선 (대칭, 고정 정점, 가변 중력) -----
+  const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
+  const T_START = 3.0;            // 1판 왕복시간(초) — 아기도 할 만큼 느림
+  const T_END = 0.5;              // 30판 왕복시간(초)
+  const T_CURVE = 1.7;            // p^1.7 → 중반까지 느림, 후반 급강
+  const T_MASTER_MIN = 0.28;      // 마스터모드 왕복시간 하한
+  let gNow = 600, vNow = 800;     // 현재 판의 중력·발사속도(recomputeKinematics 갱신)
+  let gUp = 600, gDown = 600;     // 마스터모드 상승/하강 분리 중력
+  function recomputeKinematics() {
+    const h = RISE_FRAC * H;
+    let T;
+    if (masterMode) {
+      // 마스터모드: T 를 0.5 미만으로 더 줄임(판이 오를수록), 하한 T_MASTER_MIN
+      const over = Math.max(0, stage - TOTAL_STAGES);
+      T = Math.max(T_MASTER_MIN, T_END - over * 0.012);
+    } else {
+      const p = Math.max(0, Math.min(1, (stage - 1) / (TOTAL_STAGES - 1)));
+      T = T_START + (T_END - T_START) * Math.pow(p, T_CURVE);
+    }
+    gNow = 8 * h / (T * T);
+    vNow = 4 * h / T;
+    if (masterMode) {
+      // 상승은 느슨하게, 하강은 매섭게(비대칭 허용 — 30판까지는 금지)
+      gUp = gNow * 0.8;
+      gDown = gNow * 1.6;
+    } else {
+      gUp = gNow; gDown = gNow;
+    }
   }
-  // 판 → 공 개수: 1~5판=1, 6~10판=2, …, 30판=6. 마스터모드도 5판마다 +1.
+
+  // 판 → 공 개수: 1~5판=1, 6~10판=2, …, 30판=6.
   function ballsForStage(stage) {
     return Math.floor((Math.max(1, stage) - 1) / 5) + 1;
   }
 
-  let best = 1;                  // 최고 도달 판수
+  let best = 1;                   // 최고 도달 판수
   let muted = false;
   let blindMode = false;
 
   // 게임 변수
-  let stage, catchesInStage, combo, maxCombo, zoneH, slowFactor, slowTimer, zenActive, zenScored;
-  let masterMode = false;       // 30판 클리어 후 무한 모드
+  let stage, catchesInStage, combo, maxCombo, slowFactor, slowTimer, zenActive, zenScored;
+  let masterMode = false;
   let flashAlpha = 0;
   let shake = 0;
   let lastTime = 0;
   let running = false;
-  let winParticles = [];        // 클리어 축하 파티클
+  let winParticles = [];
+  // 토스트(비차단)
+  let toastText = '', toastTimer = 0;
+  // 코인 획득 카운터(5개째 축하용)
+  let popsThisRun = 0;
 
   // ----- 멀티볼 -----
-  let ballRadius = 30;          // 화면 비율 기반(리사이즈에서 갱신)
+  let ballRadius = 30;
   let balls = [];
   let nextBallId = 1;
   function makeBall(x, y, vx, vy) {
     return {
       id: nextBallId++,
       x: x, y: y, vx: vx, vy: vy, r: ballRadius,
-      sx: 1, sy: 1,            // squash & stretch
+      sx: 1, sy: 1,
       spinPhase: 0,
       trail: [],
-      spawnY: y,               // 등장 애니메이션 목표(부드러운 진입)
-      entering: false,         // true 동안 중력 면제(화면 위에서 미끄러져 들어옴)
-      glass: false, glassTimer: 0,   // 유리화는 공별 적용
+      spawnY: y,
+      entering: false,
+      pops: 0,                    // 이 공을 튕긴 횟수 → 익음(ripeness)
     };
   }
   let particles = [];
+  const POP_AT = 8;               // 이만큼 튕기면 터짐
 
-  // 펜타토닉 (메이저): C D E G A — 콤보 사다리
+  // 펜타토닉 (메이저)
   const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.0];
+  const COL_FONT = "'Pretendard Variable', -apple-system, sans-serif";
 
-  // ---------- localStorage (판 기반 키) ----------
+  // ---------- 색 유틸 ----------
+  function hexToRgba(hex, a) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const n = parseInt(h, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  function hexToRgb(hex) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  // ================= 스토어 모듈 (localStorage) =================
+  const STORE_DEFAULT = {
+    owned: { skins: ['default'], bgs: ['default'], features: [] },
+    equipped: { skin: 'default', bg: 'default' },
+    sticks: 0,
+    photo: null,
+  };
+  let store = JSON.parse(JSON.stringify(STORE_DEFAULT));
+  let coins = 0;
+
   try { best = parseInt(localStorage.getItem('pung_best_stage') || '1', 10) || 1; } catch (e) { best = 1; }
   if (best < 1) best = 1;
-  function saveBest() { try { localStorage.setItem('pung_best_stage', String(best)); } catch (e) { /* 무시: 프라이빗 모드 */ } }
+  function saveBest() { try { localStorage.setItem('pung_best_stage', String(best)); } catch (e) { /* 프라이빗 모드 */ } }
+
+  function loadStore() {
+    try { coins = parseInt(localStorage.getItem('pung_coins') || '0', 10) || 0; } catch (e) { coins = 0; }
+    if (coins < 0) coins = 0;
+    try {
+      const raw = localStorage.getItem('pung_store');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        store = {
+          owned: {
+            skins: (parsed.owned && Array.isArray(parsed.owned.skins)) ? parsed.owned.skins : ['default'],
+            bgs: (parsed.owned && Array.isArray(parsed.owned.bgs)) ? parsed.owned.bgs : ['default'],
+            features: (parsed.owned && Array.isArray(parsed.owned.features)) ? parsed.owned.features : [],
+          },
+          equipped: {
+            skin: (parsed.equipped && parsed.equipped.skin) || 'default',
+            bg: (parsed.equipped && parsed.equipped.bg) || 'default',
+          },
+          sticks: parsed.sticks | 0,
+          photo: parsed.photo || null,
+        };
+        if (store.owned.skins.indexOf('default') < 0) store.owned.skins.push('default');
+        if (store.owned.bgs.indexOf('default') < 0) store.owned.bgs.push('default');
+      }
+    } catch (e) { store = JSON.parse(JSON.stringify(STORE_DEFAULT)); }
+  }
+  function saveStore() {
+    try { localStorage.setItem('pung_coins', String(coins)); } catch (e) { /* 무시 */ }
+    try { localStorage.setItem('pung_store', JSON.stringify(store)); }
+    catch (e) {
+      // quota 초과: 사진 제거 후 1회 재시도
+      try { store.photo = null; localStorage.setItem('pung_store', JSON.stringify(store)); }
+      catch (e2) { /* 그래도 실패하면 포기(메모리에는 유지) */ }
+    }
+  }
+  function getCoins() { return coins; }
+  function addCoins(n) { coins += n; if (coins < 0) coins = 0; saveStore(); }
+  function spend(n) { if (coins < n) return false; coins -= n; saveStore(); return true; }
+  function isOwned(cat, id) {
+    const arr = store.owned[cat];
+    return !!(arr && arr.indexOf(id) >= 0);
+  }
+  function buy(cat, id, price) {
+    if (isOwned(cat, id)) return true;
+    if (!spend(price)) return false;
+    store.owned[cat].push(id);
+    saveStore();
+    return true;
+  }
+  function equip(cat, id) {
+    // cat: 'skin' | 'bg' (단수). owned 키는 복수형.
+    const ownKey = cat === 'skin' ? 'skins' : 'bgs';
+    if (!isOwned(ownKey, id)) return false;
+    store.equipped[cat] = id;
+    saveStore();
+    return true;
+  }
+  loadStore();
+
+  // ================= 공 스킨 (정밀 코드 드로잉) =================
+  // 각 draw(ctx,x,y,r,phase) — 원점(0,0) 기준이 아니라 (x,y) 중심. squash 는 호출부에서 적용.
+  const SKIN_COL = {
+    soccerWhite: '#F4F4F4', soccerBlack: '#1A1A1A',
+    basketOrange: '#E0792B', basketLine: '#23150A',
+    jupTan: '#D9B48F', jupBand: '#A06A3E', jupSpot: '#B23A2E',
+    saturnBody: '#E8D9A8', saturnRing: '#C9A06B', saturnRing2: '#8A6D3B',
+    pengBlack: '#2A2A30', pengWhite: '#F5F5F5', pengBeak: '#F2A53A', pengEye: '#16161A',
+  };
+
+  function drawDefaultSkin(c, x, y, r, phase) {
+    // 보라→분홍 굴절 공
+    const grad = c.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.92)');
+    grad.addColorStop(0.35, hexToRgba(COL.refractFrom, 0.7));
+    grad.addColorStop(0.75, hexToRgba(COL.refractTo, 0.6));
+    grad.addColorStop(1, hexToRgba(COL.refractTo, 0.22));
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = grad; c.fill();
+    // 내부 굴절 코어(회전)
+    const core = c.createLinearGradient(x - r * 0.4, y - r * 0.4, x + r * 0.4, y + r * 0.5);
+    core.addColorStop(0, hexToRgba(COL.refractFrom, 0.5));
+    core.addColorStop(1, hexToRgba(COL.refractTo, 0.4));
+    c.beginPath(); c.arc(x + Math.cos(phase) * r * 0.15, y + r * 0.12, r * 0.5, 0, Math.PI * 2);
+    c.fillStyle = core; c.fill();
+  }
+
+  function clipCircle(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.clip(); }
+
+  function drawSoccerSkin(c, x, y, r, phase) {
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = SKIN_COL.soccerWhite; c.fill();
+    c.save(); clipCircle(c, x, y, r);
+    // 중앙 오각형(검정)
+    c.fillStyle = SKIN_COL.soccerBlack;
+    const drawPenta = (cx, cy, pr, rot) => {
+      c.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = rot + i * Math.PI * 2 / 5 - Math.PI / 2;
+        const px = cx + Math.cos(a) * pr, py = cy + Math.sin(a) * pr;
+        if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+      }
+      c.closePath(); c.fill();
+    };
+    drawPenta(x + Math.sin(phase) * r * 0.05, y, r * 0.34, phase * 0.3);
+    // 주변 오각형 5개(살짝)
+    for (let i = 0; i < 5; i++) {
+      const a = phase * 0.3 + i * Math.PI * 2 / 5 - Math.PI / 2;
+      const cx = x + Math.cos(a) * r * 0.82, cy = y + Math.sin(a) * r * 0.82;
+      drawPenta(cx, cy, r * 0.26, a);
+    }
+    // 연결선
+    c.strokeStyle = SKIN_COL.soccerBlack; c.lineWidth = Math.max(1.2, r * 0.05);
+    for (let i = 0; i < 5; i++) {
+      const a = phase * 0.3 + i * Math.PI * 2 / 5 - Math.PI / 2;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); c.stroke();
+    }
+    c.restore();
+  }
+
+  function drawBasketSkin(c, x, y, r, phase) {
+    const grad = c.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    grad.addColorStop(0, '#F09A4E'); grad.addColorStop(1, SKIN_COL.basketOrange);
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = grad; c.fill();
+    c.save(); clipCircle(c, x, y, r);
+    c.strokeStyle = SKIN_COL.basketLine; c.lineWidth = Math.max(1.5, r * 0.07);
+    // 세로 중앙선 + 가로 중앙선
+    c.beginPath(); c.moveTo(x, y - r); c.lineTo(x, y + r); c.stroke();
+    c.beginPath(); c.moveTo(x - r, y); c.lineTo(x + r, y); c.stroke();
+    // 곡선 심 2개(양옆)
+    c.beginPath(); c.ellipse(x - r * 0.9, y, r * 0.55, r, 0, -Math.PI / 2.2, Math.PI / 2.2); c.stroke();
+    c.beginPath(); c.ellipse(x + r * 0.9, y, r * 0.55, r, 0, Math.PI - Math.PI / 2.2, Math.PI + Math.PI / 2.2); c.stroke();
+    c.restore();
+  }
+
+  function drawJupiterSkin(c, x, y, r, phase) {
+    c.save(); clipCircle(c, x, y, r);
+    // 가로 줄무늬 그라데이션
+    const g = c.createLinearGradient(0, y - r, 0, y + r);
+    g.addColorStop(0, SKIN_COL.jupTan); g.addColorStop(0.2, SKIN_COL.jupBand);
+    g.addColorStop(0.4, SKIN_COL.jupTan); g.addColorStop(0.6, SKIN_COL.jupBand);
+    g.addColorStop(0.8, SKIN_COL.jupTan); g.addColorStop(1, SKIN_COL.jupBand);
+    c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    // 줄무늬 강조(가는 띠)
+    c.fillStyle = 'rgba(120,80,50,0.35)';
+    for (let i = -3; i <= 3; i++) {
+      const yy = y + i * r * 0.28 + Math.sin(phase + i) * r * 0.02;
+      c.fillRect(x - r, yy, r * 2, r * 0.08);
+    }
+    // 대적점
+    c.beginPath();
+    c.ellipse(x + r * 0.35, y + r * 0.22, r * 0.28, r * 0.18, 0, 0, Math.PI * 2);
+    c.fillStyle = SKIN_COL.jupSpot; c.fill();
+    c.restore();
+  }
+
+  function drawSaturnSkin(c, x, y, r, phase) {
+    const body = r * 0.7;
+    // 고리(뒤쪽 절반)
+    c.save();
+    c.translate(x, y); c.rotate(-0.45);
+    c.strokeStyle = SKIN_COL.saturnRing; c.lineWidth = Math.max(2, r * 0.13);
+    c.beginPath(); c.ellipse(0, 0, r * 1.05, r * 0.4, 0, Math.PI, Math.PI * 2); c.stroke();
+    c.strokeStyle = SKIN_COL.saturnRing2; c.lineWidth = Math.max(1, r * 0.05);
+    c.beginPath(); c.ellipse(0, 0, r * 1.05, r * 0.4, 0, Math.PI, Math.PI * 2); c.stroke();
+    c.restore();
+    // 본체
+    const g = c.createRadialGradient(x - body * 0.3, y - body * 0.3, body * 0.1, x, y, body);
+    g.addColorStop(0, '#F6ECC8'); g.addColorStop(1, SKIN_COL.saturnBody);
+    c.beginPath(); c.arc(x, y, body, 0, Math.PI * 2); c.fillStyle = g; c.fill();
+    // 본체 가로 띠
+    c.save(); clipCircle(c, x, y, body);
+    c.strokeStyle = 'rgba(160,130,70,0.4)'; c.lineWidth = Math.max(1, r * 0.05);
+    for (let i = -2; i <= 2; i++) {
+      c.beginPath(); c.moveTo(x - body, y + i * body * 0.4); c.lineTo(x + body, y + i * body * 0.4); c.stroke();
+    }
+    c.restore();
+    // 고리(앞쪽 절반)
+    c.save();
+    c.translate(x, y); c.rotate(-0.45);
+    c.strokeStyle = SKIN_COL.saturnRing; c.lineWidth = Math.max(2, r * 0.13);
+    c.beginPath(); c.ellipse(0, 0, r * 1.05, r * 0.4, 0, 0, Math.PI); c.stroke();
+    c.restore();
+  }
+
+  function drawPenguinSkin(c, x, y, r, phase) {
+    // 머리/몸 검정
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = SKIN_COL.pengBlack; c.fill();
+    c.save(); clipCircle(c, x, y, r);
+    // 흰 배(아래 큰 타원)
+    c.beginPath(); c.ellipse(x, y + r * 0.18, r * 0.62, r * 0.78, 0, 0, Math.PI * 2);
+    c.fillStyle = SKIN_COL.pengWhite; c.fill();
+    // 흰 얼굴(눈 주변)
+    c.beginPath(); c.ellipse(x, y - r * 0.28, r * 0.5, r * 0.36, 0, 0, Math.PI * 2);
+    c.fillStyle = SKIN_COL.pengWhite; c.fill();
+    c.restore();
+    // 눈 2개
+    const ex = r * 0.22, ey = -r * 0.32, es = r * 0.12;
+    c.fillStyle = SKIN_COL.pengEye;
+    c.beginPath(); c.arc(x - ex, y + ey, es, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(x + ex, y + ey, es, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#FFFFFF';
+    c.beginPath(); c.arc(x - ex + es * 0.3, y + ey - es * 0.3, es * 0.4, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(x + ex + es * 0.3, y + ey - es * 0.3, es * 0.4, 0, Math.PI * 2); c.fill();
+    // 부리(삼각형)
+    c.fillStyle = SKIN_COL.pengBeak;
+    c.beginPath();
+    c.moveTo(x - r * 0.16, y - r * 0.05);
+    c.lineTo(x + r * 0.16, y - r * 0.05);
+    c.lineTo(x, y + r * 0.16);
+    c.closePath(); c.fill();
+  }
+
+  const SKINS = [
+    { id: 'default', name: '기본 굴절공', price: 0, draw: drawDefaultSkin },
+    { id: 'soccer', name: '축구공', price: 30, draw: drawSoccerSkin },
+    { id: 'basket', name: '농구공', price: 30, draw: drawBasketSkin },
+    { id: 'jupiter', name: '목성', price: 60, draw: drawJupiterSkin },
+    { id: 'saturn', name: '토성', price: 80, draw: drawSaturnSkin },
+    { id: 'penguin', name: '펭귄', price: 100, draw: drawPenguinSkin },
+  ];
+  function skinById(id) { return SKINS.find((s) => s.id === id) || SKINS[0]; }
+
+  // ================= 배경 (코드 3종 + 사진) =================
+  let photoImg = null;            // 사진 배경 캐시
+  function loadPhotoImage() {
+    photoImg = null;
+    if (!store.photo) return;
+    const img = new Image();
+    img.onload = () => { photoImg = img; };
+    img.src = store.photo;
+  }
+  loadPhotoImage();
+
+  function bgDefault(c) { c.fillStyle = COL.bg; c.fillRect(-20, -20, W + 40, H + 40); }
+  function bgSunset(c) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#2A1B3D'); g.addColorStop(0.5, '#B5446E'); g.addColorStop(1, '#F2994A');
+    c.fillStyle = g; c.fillRect(-20, -20, W + 40, H + 40);
+    // 태양
+    c.beginPath(); c.arc(W * 0.5, H * 0.62, Math.min(W, H) * 0.16, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(255,220,150,0.55)'; c.fill();
+  }
+  function bgSpace(c) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#05060F'); g.addColorStop(1, '#15203A');
+    c.fillStyle = g; c.fillRect(-20, -20, W + 40, H + 40);
+    // 별(고정 시드처럼 보이게 결정적 배치)
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 60; i++) {
+      const sx = (i * 73 % 100) / 100 * W;
+      const sy = (i * 137 % 100) / 100 * H;
+      const sz = (i % 3) * 0.6 + 0.5;
+      c.fillRect(sx, sy, sz, sz);
+    }
+  }
+  function bgPhoto(c) {
+    bgDefault(c);
+    if (photoImg && photoImg.width) {
+      // cover 핏
+      const ir = photoImg.width / photoImg.height, sr = W / H;
+      let dw, dh;
+      if (ir > sr) { dh = H; dw = H * ir; } else { dw = W; dh = W / ir; }
+      c.drawImage(photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(-20, -20, W + 40, H + 40); // 가독성 오버레이
+    }
+  }
+  const BGS = [
+    { id: 'default', name: '기본 다크', price: 0, render: bgDefault },
+    { id: 'sunset', name: '노을', price: 40, render: bgSunset },
+    { id: 'space', name: '우주', price: 40, render: bgSpace },
+    { id: 'photo', name: '내 사진', price: 150, render: bgPhoto },
+  ];
+  function bgById(id) { return BGS.find((b) => b.id === id) || BGS[0]; }
+
+  const STICK_PRICE = 50;
 
   // ---------- Web Audio ----------
   let actx = null, masterGain = null, musicGain = null;
@@ -136,39 +484,29 @@
     masterGain = actx.createGain();
     masterGain.gain.value = muted ? 0 : 0.9;
     masterGain.connect(actx.destination);
-    // 음악 레이어는 별도 버스(효과음보다 낮게) — 같은 마스터 밑이라 음소거로 함께 꺼짐
     musicGain = actx.createGain();
     musicGain.gain.value = 0.0001;
     musicGain.connect(masterGain);
   }
   function setMasterMute() { if (masterGain) masterGain.gain.value = muted ? 0 : 0.9; }
 
-  // ---------- 절차적 배경 음악 (판 기반 에스컬레이션) ----------
-  // 16분음표 스텝 시퀀서. BPM·공격성·퍼커션 밀도·피치를 판에 따라 끌어올림.
-  // intensity 0(1판)~1(30판). 초반 차분 → 후반(22~30판) 과격·급박. 마스터모드는 최대 고정.
-  const music = {
-    on: false,
-    nextNoteTime: 0,
-    step: 0,
-    timer: null,
-  };
+  // ---------- 절차적 배경 음악 ----------
+  const music = { on: false, nextNoteTime: 0, step: 0, timer: null };
   function musicIntensity() {
-    if (masterMode) return 1;   // 마스터모드: 최대 고정
+    if (masterMode) return 1;
     return Math.max(0, Math.min(1, (stage - 1) / (TOTAL_STAGES - 1)));
   }
   function musicBPM() {
-    // 88(차분) → 188(급박). 마스터모드는 살짝 더 공격적(200). 후반 가속 위해 약간 지수형.
     if (masterMode) return 200;
     const t = Math.pow(musicIntensity(), 1.15);
     return 88 + t * 100;
   }
-  // 마이너 펜타토닉 베이스라인 음정(저음 → 긴장)
   const BASS_HZ = [98.0, 110.0, 130.81, 146.83, 110.0, 98.0, 130.81, 164.81];
 
   function scheduleKick(t, intensity) {
     const o = actx.createOscillator(); const g = actx.createGain();
     o.type = 'sine';
-    const startHz = 150 + intensity * 110;   // 후반: 더 높고 타격감
+    const startHz = 150 + intensity * 110;
     o.frequency.setValueAtTime(startHz, t);
     o.frequency.exponentialRampToValueAtTime(45, t + 0.10);
     const peak = 0.55 + intensity * 0.35;
@@ -191,11 +529,9 @@
   }
   function scheduleBass(t, hz, intensity, dur) {
     const o = actx.createOscillator(); const g = actx.createGain();
-    // 후반: sine → sawtooth 로 전환하며 디스토션감
     o.type = intensity > 0.45 ? 'sawtooth' : 'triangle';
     o.frequency.setValueAtTime(hz, t);
     const lp = actx.createBiquadFilter(); lp.type = 'lowpass';
-    // 후반엔 필터를 열어 더 거칠고 밝게(공격적)
     lp.frequency.setValueAtTime(360 + intensity * 2600, t);
     lp.Q.value = 2 + intensity * 8;
     const peak = 0.12 + intensity * 0.14;
@@ -205,7 +541,6 @@
     o.connect(lp); lp.connect(g); g.connect(musicGain);
     o.start(t); o.stop(t + dur + 0.05);
   }
-  // 후반 긴장 리드(고음 톱니 stab)
   function scheduleStab(t, intensity) {
     const hz = 440 * Math.pow(2, (Math.floor(Math.random() * 5)) / 12) * (1 + intensity * 0.5);
     const o = actx.createOscillator(); const g = actx.createGain();
@@ -217,37 +552,24 @@
     o.connect(lp); lp.connect(g); g.connect(musicGain);
     o.start(t); o.stop(t + 0.15);
   }
-
   function musicTick() {
     if (!music.on || !actx) return;
-    const secPerStep = 60 / musicBPM() / 4;   // 16분음표
-    // 부족분 미리 스케줄(드리프트 방지)
+    const secPerStep = 60 / musicBPM() / 4;
     while (music.nextNoteTime < actx.currentTime + 0.12) {
       const t = music.nextNoteTime;
       const inten = musicIntensity();
       const s = music.step % 16;
-
-      // 킥: 초반 1,9 → 후반 더 촘촘(1,5,9,13 + 가끔 오프비트)
       if (s === 0 || s === 8) scheduleKick(t, inten);
       else if (inten > 0.35 && (s === 4 || s === 12)) scheduleKick(t, inten);
       else if (inten > 0.7 && (s === 6 || s === 14) && Math.random() < 0.6) scheduleKick(t, inten);
-
-      // 하이햇: 밀도 = intensity. 8분 → 16분으로 촘촘.
       const hatEvery = inten > 0.55 ? 1 : (inten > 0.25 ? 2 : 4);
       if (s % hatEvery === 0) scheduleHat(t, inten);
-
-      // 베이스: 매 4스텝(8분음표 느낌). 후반엔 더 잦게.
       const bassEvery = inten > 0.6 ? 2 : 4;
       if (s % bassEvery === 0) {
         const hz = BASS_HZ[(music.step / bassEvery | 0) % BASS_HZ.length];
         scheduleBass(t, hz, inten, secPerStep * bassEvery * 0.9);
       }
-
-      // 긴장 stab: intensity 0.7+ (대략 22판+) 부터 등장, 갈수록 잦게. 마스터모드 최다.
-      if (inten > 0.7 && (s === 2 || s === 10) && Math.random() < (inten - 0.7) * 3) {
-        scheduleStab(t, inten);
-      }
-
+      if (inten > 0.7 && (s === 2 || s === 10) && Math.random() < (inten - 0.7) * 3) scheduleStab(t, inten);
       music.step++;
       music.nextNoteTime += secPerStep;
     }
@@ -255,10 +577,8 @@
   }
   function startMusic() {
     if (!actx || music.on) return;
-    music.on = true;
-    music.step = 0;
+    music.on = true; music.step = 0;
     music.nextNoteTime = actx.currentTime + 0.08;
-    // 음악 볼륨 페이드 인
     musicGain.gain.cancelScheduledValues(actx.currentTime);
     musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), actx.currentTime);
     musicGain.gain.exponentialRampToValueAtTime(0.5, actx.currentTime + 0.6);
@@ -274,7 +594,6 @@
     }
   }
 
-  // 시원한 boing: 피치 슬라이드 + 짧은 잔향. pan = 스테레오(눈 감고 모드용)
   function playBoing(freq, pan) {
     if (!actx || muted) return;
     const t = actx.currentTime;
@@ -283,39 +602,48 @@
     const panner = actx.createStereoPanner ? actx.createStereoPanner() : null;
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq * 0.55, t);
-    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.09);   // "띠요오옹" 슬라이드 업
+    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.09);
     osc.frequency.exponentialRampToValueAtTime(freq * 0.92, t + 0.32);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);        // 짧은 잔향 꼬리
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
     let tail = g;
     if (panner) { panner.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(panner); tail = panner; }
     osc.connect(g); tail.connect(masterGain);
     osc.start(t); osc.stop(t + 0.45);
   }
 
-  // 유리 깨짐: 화이트노이즈 버스트 + 고음 "챙—"
-  function playGlassBreak() {
+  // 터짐: 길고 시원한 화이트노이즈 스윕 + 상승 스파클 (0.6~0.9s 테일)
+  function playPop() {
     if (!actx || muted) return;
     const t = actx.currentTime;
-    // 챙
-    const o = actx.createOscillator(); const og = actx.createGain();
-    o.type = 'triangle'; o.frequency.setValueAtTime(2300, t);
-    o.frequency.exponentialRampToValueAtTime(1400, t + 0.25);
-    og.gain.setValueAtTime(0.4, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-    o.connect(og); og.connect(masterGain); o.start(t); o.stop(t + 0.5);
-    // 파편 노이즈
-    const len = Math.floor(actx.sampleRate * 0.3);
+    // 화이트노이즈 스윕(밴드패스 위로)
+    const len = Math.floor(actx.sampleRate * 0.85);
     const buf = actx.createBuffer(1, len, actx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
     const src = actx.createBufferSource(); src.buffer = buf;
-    const ng = actx.createGain(); ng.gain.value = 0.25;
-    const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
-    src.connect(hp); hp.connect(ng); ng.connect(masterGain); src.start(t);
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(600, t);
+    bp.frequency.exponentialRampToValueAtTime(7000, t + 0.6);
+    bp.Q.value = 0.8;
+    const ng = actx.createGain();
+    ng.gain.setValueAtTime(0.35, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
+    src.connect(bp); bp.connect(ng); ng.connect(masterGain); src.start(t);
+    // 상승 스파클(쪼개지는 종소리 3음)
+    [880, 1320, 1760].forEach((f, i) => {
+      const o = actx.createOscillator(); const g = actx.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      const st = t + i * 0.05;
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.32, st + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + 0.7);
+      o.connect(g); g.connect(masterGain); o.start(st); o.stop(st + 0.75);
+    });
   }
 
-  function playFlash() { // Zen 성공 플래시음
+  function playFlash() {
     if (!actx || muted) return;
     const t = actx.currentTime;
     [523.25, 659.25, 783.99].forEach((f, i) => {
@@ -328,7 +656,6 @@
     });
   }
 
-  // 30판 클리어 팡파레 (상행 아르페지오 + 빛나는 코드)
   function playFanfare() {
     if (!actx || muted) return;
     const t = actx.currentTime;
@@ -342,7 +669,6 @@
       g.gain.exponentialRampToValueAtTime(0.0001, st + 0.6);
       o.connect(g); g.connect(masterGain); o.start(st); o.stop(st + 0.65);
     });
-    // 마무리 풍성한 메이저 코드
     const chordT = t + seq.length * 0.10;
     [523.25, 659.25, 783.99].forEach((f) => {
       const o = actx.createOscillator(); const g = actx.createGain();
@@ -357,7 +683,29 @@
 
   // ---------- 햅틱 ----------
   function vibrate(pattern) {
-    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) { /* 미지원 graceful */ } }
+    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) { /* graceful */ } }
+  }
+
+  // ---------- 막대기(패들) ----------
+  // sticks 트레이: 보유 개수만큼 아이콘. 탭하면 활성 패들 켜짐.
+  let paddle = null;              // { x, half, bouncesLeft, count }
+  let mergeSticks = false;        // 합치기 토글
+  const PADDLE_BAND = 26;         // 패들 y 두께(px)
+  function paddleY() { return H - 90; }
+  function activatePaddle() {
+    if (store.sticks <= 0) return;
+    const count = mergeSticks ? Math.min(3, store.sticks) : 1;
+    const half = (count >= 3 ? 0.8 : count === 2 ? 0.55 : 0.3) * W / 2;
+    paddle = { x: W / 2, half: half, bouncesLeft: 3 * count, count: count };
+    renderStickTray();
+  }
+  function consumePaddleSticks() {
+    // 패들 소멸 → 사용한 count 만큼 sticks 차감
+    if (!paddle) return;
+    store.sticks = Math.max(0, store.sticks - paddle.count);
+    saveStore();
+    paddle = null;
+    renderStickTray();
   }
 
   // ---------- 리사이즈 / 회전 ----------
@@ -371,13 +719,12 @@
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    // 공이 많아질수록 살짝 작게(저글링 가독성). 화면 비율 기반.
-    ballRadius = Math.max(18, Math.min(W, H) * 0.070);
-    // 모든 공: 반지름 갱신 + 화면 비율 기반으로 위치 재배치(리사이즈/회전)
-    if (state === STATE.PLAYING && prevW > 0 && prevH > 0) {
+    // 공 크기 약 1.4배(기존 0.070 → 0.098)
+    ballRadius = Math.max(24, Math.min(W, H) * 0.098);
+    if ((state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT) && prevW > 0 && prevH > 0) {
       for (const b of balls) {
-        b.x = (b.x / prevW) * W;   // 가로 비율 유지
-        b.y = (b.y / prevH) * H;   // 세로 비율 유지
+        b.x = (b.x / prevW) * W;
+        b.y = (b.y / prevH) * H;
         b.r = ballRadius;
         b.x = Math.max(b.r, Math.min(W - b.r, b.x));
         if (b.y < b.r) b.y = b.r;
@@ -385,22 +732,16 @@
     } else {
       for (const b of balls) b.r = ballRadius;
     }
+    if (typeof stage === 'number') recomputeKinematics();
   }
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 150));
 
   // ---------- 게임 흐름 ----------
-  function zoneTop() {
-    const zh = zoneH * H;
-    return H - zh;
-  }
-  function recalcZone() {
-    zoneH = zoneFracForStage(stage);
-  }
+  // 받는 영역 고정: 상단 38% 위, 하단 62% 받음.
+  function zoneTop() { return H * 0.38; }
 
-  // 새 공이 화면 위에서 부드럽게 등장 (x 분산으로 기존 공과 겹치지 않게)
   function spawnBall() {
-    // 기존 공들과 가장 멀리 떨어진 x 슬롯 고르기
     const margin = ballRadius * 1.5;
     let bestX = W / 2, bestGap = -1;
     for (let k = 0; k < 7; k++) {
@@ -411,12 +752,10 @@
       if (minD > bestGap) { bestGap = minD; bestX = cand; }
     }
     const nb = makeBall(bestX, -ballRadius * 1.2, (Math.random() * 2 - 1) * 60, 0);
-    nb.entering = true;            // 살짝 미끄러져 들어오는 동안 중력 면제
+    nb.entering = true;
     nb.spawnY = H * 0.18;
     balls.push(nb);
   }
-
-  // 판이 5의 배수를 넘으면 공 개수를 목표치까지 맞춤(부드러운 등장)
   function reconcileBalls() {
     const want = ballsForStage(stage);
     while (balls.length < want) spawnBall();
@@ -427,8 +766,9 @@
     stage = 1; catchesInStage = 0; combo = 0; maxCombo = 0;
     slowFactor = 1; slowTimer = 0; zenActive = false; zenScored = false;
     masterMode = false; flashAlpha = 0; shake = 0;
-    recalcZone();
-    // 멀티볼 초기화: 1판은 공 1개
+    toastText = ''; toastTimer = 0; popsThisRun = 0;
+    paddle = null;
+    recomputeKinematics();
     balls = [];
     const b0 = makeBall(W / 2, H * 0.3, (Math.random() * 2 - 1) * 80, 0);
     balls.push(b0);
@@ -439,13 +779,26 @@
     elMenu.classList.add('hidden');
     elGameover.classList.add('hidden');
     elWin.classList.add('hidden');
+    elShop.classList.add('hidden');
+    elPause.classList.add('hidden');
+    elCheckpoint.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
+    elPauseBtn.classList.remove('hidden');
     elBlindBanner.classList.toggle('hidden', !blindMode);
+    renderStickTray();
     updateHud();
     startMusic();
     lastTime = performance.now();
     if (!running) { running = true; requestAnimationFrame(loop); }
+  }
+
+  function hidePlayChrome() {
+    elHud.classList.add('hidden');
+    elHud.setAttribute('aria-hidden', 'true');
+    elBlindBanner.classList.add('hidden');
+    elPauseBtn.classList.add('hidden');
+    elStickTray.classList.add('hidden');
   }
 
   function gameOver() {
@@ -454,11 +807,8 @@
     if (stage > best) { best = stage; saveBest(); elNewRecord.classList.remove('hidden'); }
     else elNewRecord.classList.add('hidden');
     elFinalScore.textContent = stage;
-    // 마스터모드면 "도달 판수"를 강조
     elGoBest.textContent = (masterMode ? '마스터 도달 ' : '최고 도달 ') + best + '판';
-    elHud.classList.add('hidden');
-    elHud.setAttribute('aria-hidden', 'true');
-    elBlindBanner.classList.add('hidden');
+    hidePlayChrome();
     elGameover.classList.remove('hidden');
     vibrate(60);
   }
@@ -470,9 +820,7 @@
     if (best < TOTAL_STAGES) best = TOTAL_STAGES;
     saveBest();
     elWinCombo.textContent = maxCombo;
-    elHud.classList.add('hidden');
-    elHud.setAttribute('aria-hidden', 'true');
-    elBlindBanner.classList.add('hidden');
+    hidePlayChrome();
     elWin.classList.remove('hidden');
     spawnWinParticles();
     playFanfare();
@@ -480,20 +828,19 @@
     vibrate([40, 30, 40, 30, 40, 30, 120]);
   }
 
-  // 마스터모드 진입: 클리어 화면에서 "계속하기" → 판 카운트 유지하며 무한 진행.
   function enterMasterMode() {
     masterMode = true;
     state = STATE.PLAYING;
-    // zone은 최소 고정(zoneFracForStage 가 30 이상이면 ZONE_MIN_H 반환)
-    recalcZone();
-    // 현재 살아있는 공은 유지(클리어 시점 공 그대로) — 부족하면 채움
+    recomputeKinematics();
     reconcileBalls();
     flashAlpha = 0;
     elWin.classList.add('hidden');
     elGameover.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
+    elPauseBtn.classList.remove('hidden');
     elBlindBanner.classList.toggle('hidden', !blindMode);
+    renderStickTray();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -504,112 +851,183 @@
     stopMusic();
     elGameover.classList.add('hidden');
     elWin.classList.add('hidden');
-    elBlindBanner.classList.add('hidden');
+    elShop.classList.add('hidden');
+    elPause.classList.add('hidden');
+    elCheckpoint.classList.add('hidden');
+    hidePlayChrome();
     elMenu.classList.remove('hidden');
     elMenuBest.textContent = '최고 도달 ' + best + '판';
+  }
+
+  // 체크포인트 (3판마다 차단)
+  function enterCheckpoint(clearedStage) {
+    state = STATE.CHECKPOINT;
+    stopMusic();
+    elCpTitle.textContent = clearedStage + '판 클리어!';
+    elCheckpoint.classList.remove('hidden');
+  }
+  function resumeFromCheckpoint() {
+    elCheckpoint.classList.add('hidden');
+    state = STATE.PLAYING;
+    startMusic();
+    lastTime = performance.now();
+  }
+
+  // 일시정지
+  function pauseGame() {
+    if (state !== STATE.PLAYING) return;
+    state = STATE.PAUSED;
+    stopMusic();
+    elPause.classList.remove('hidden');
+  }
+  function resumeGame() {
+    if (state !== STATE.PAUSED) return;
+    elPause.classList.add('hidden');
+    state = STATE.PLAYING;
+    startMusic();
+    lastTime = performance.now();
   }
 
   function updateHud() {
     elHudStage.textContent = stage;
     elHudCombo.textContent = combo;
     elHudBest.textContent = best;
-    // 마스터모드는 "/ 30판" 대신 ∞ 표기
     if (elHudOf) elHudOf.textContent = masterMode ? ' MASTER' : ' / 30판';
   }
 
-  // 어쩌면 Zen Drop 트리거 (30판 기준: 띠가 좁아지는 중반부터 가끔, 후반엔 거의 안 나오게)
-  // 중반(8~22판)에 숨돌릴 슬로우모션 보너스. 후반·마스터모드엔 급박함 유지 위해 확률↓.
+  function showToast(text) { toastText = text; toastTimer = 0.9; }
+
   function maybeZen() {
     if (zenActive) return;
-    if (balls.some((b) => b.glass)) return;   // 유리화 중이면 보류
     if (stage < 5) return;
-    // 멀티볼(공 2개 이상)에선 저글링 난도를 위해 Zen 빈도 더 낮춤
     const multi = balls.length > 1;
-    let prob = stage <= 18 ? 0.16 : 0.07;     // 후반 갈수록 드물게
-    if (masterMode) prob = 0.04;              // 마스터모드: 거의 안 나옴
+    let prob = stage <= 18 ? 0.16 : 0.07;
+    if (masterMode) prob = 0.04;
     if (multi) prob *= 0.6;
-    if (Math.random() < prob) {
-      zenActive = true; zenScored = false;
-      slowTimer = 2.6;
-    }
+    if (Math.random() < prob) { zenActive = true; zenScored = false; slowTimer = 2.6; }
   }
 
-  // 콤보 음정 + 튕긴 높이 매핑한 피치
   function bouncePitch(b) {
     const baseIdx = Math.min(combo, PENTA.length - 1);
     const base = PENTA[baseIdx];
-    // 튕긴 높이(공이 위로 올라갈 정도) → 미세 피치 ±
     const heightFactor = Math.min(1, Math.abs(b.vy) / 1500);
     return base * (1 + heightFactor * 0.18);
   }
 
-  // 튕김 처리 (성공적으로 받음) — 받은 공 b 를 인자로
-  function doBounce(b) {
-    const power = 1000 + Math.min(stage * 5, 420) + (b.glass ? 120 : 0);
-    b.vy = -power;
+  // 코인 지급(1터짐=1코인, 5개째마다 축하)
+  function awardCoin() {
+    addCoins(1);
+    popsThisRun += 1;
+    if (popsThisRun % 5 === 0) showToast('+5 코인! 🪙');
+  }
+
+  // 큰 버스트 파티클(스킨색→흰색) + 링 충격파
+  function spawnBurst(b) {
+    const skin = skinById(store.equipped.skin);
+    let base = COL.refractTo;
+    if (skin.id === 'soccer') base = '#FFFFFF';
+    else if (skin.id === 'basket') base = SKIN_COL.basketOrange;
+    else if (skin.id === 'jupiter') base = SKIN_COL.jupTan;
+    else if (skin.id === 'saturn') base = SKIN_COL.saturnBody;
+    else if (skin.id === 'penguin') base = SKIN_COL.pengWhite;
+    const c1 = hexToRgb(base);
+    for (let i = 0; i < 42; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 160 + Math.random() * 460;
+      const mix = Math.random();
+      const col = 'rgb(' +
+        Math.round(c1[0] + (255 - c1[0]) * mix) + ',' +
+        Math.round(c1[1] + (255 - c1[1]) * mix) + ',' +
+        Math.round(c1[2] + (255 - c1[2]) * mix) + ')';
+      particles.push({
+        x: b.x, y: b.y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+        life: 0.7 + Math.random() * 0.5, age: 0,
+        size: 3 + Math.random() * 7, rot: Math.random() * Math.PI,
+        color: col, ring: false,
+      });
+    }
+    // 링 충격파
+    particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.5, age: 0, size: b.r, rot: 0, color: '#FFFFFF', ring: true });
+  }
+
+  // 공 터짐: 제거 + 코인 + 새 공 보충
+  function popBall(b) {
+    spawnBurst(b);
+    playPop();
+    shake = 12;
+    vibrate([40, 30, 40, 30, 60]);
+    awardCoin();
+    const idx = balls.indexOf(b);
+    if (idx >= 0) balls.splice(idx, 1);
+    reconcileBalls();
+  }
+
+  // 튕김 처리(성공적으로 받음) — paddleHit=true면 패들이 받은 것
+  function doBounce(b, paddleHit) {
+    b.pops += 1;
+
+    // 임계 도달 → 터짐
+    if (b.pops >= POP_AT) {
+      // 터지기 직전 살짝 튕겨 보이게(시각) 후 즉시 제거
+      combo += 1;
+      if (combo > maxCombo) maxCombo = combo;
+      popBall(b);
+      // 판 진행은 일반 캐치와 동일하게 처리
+      progressStage(false);
+      return;
+    }
+
+    b.vy = -vNow;
     b.vx += (Math.random() * 2 - 1) * 120;
     b.vx = Math.max(-380, Math.min(380, b.vx));
-    b.sy = 1.5; b.sx = 0.65;   // stretch 위로
+    b.sy = 1.5; b.sx = 0.65;
 
     combo += 1;
     if (combo > maxCombo) maxCombo = combo;
 
-    const pan = (b.x / W) * 2 - 1;   // 스테레오 팬: 좌-1 ~ 우+1
+    const pan = (b.x / W) * 2 - 1;
     playBoing(bouncePitch(b), pan);
 
-    // Zen 성공 보너스 → 한 판 더 진행
     const zenBonus = zenActive && !zenScored;
     if (zenBonus) {
       zenScored = true; flashAlpha = 0.85; playFlash();
-      vibrate([20, 40, 20]);   // Zen 햅틱
+      vibrate([20, 40, 20]);
       slowTimer = Math.min(slowTimer, 0.25);
-    } else {
-      vibrate(blindMode ? 30 : 15);   // 평타 햅틱
+    } else if (!paddleHit) {
+      vibrate(blindMode ? 30 : 15);
     }
 
-    // 판 진행: 1캐치=+1판 (Zen 성공 시 한 판 더)
+    progressStage(zenBonus);
+    maybeZen();
+  }
+
+  // 판 진행 로직(터짐·일반 공통). zenBonus면 두 판.
+  function progressStage(zenBonus) {
+    const prevStage = stage;
     catchesInStage += (zenBonus ? 2 : 1);
     while (catchesInStage >= CATCHES_PER_STAGE && (masterMode || stage < TOTAL_STAGES)) {
       catchesInStage -= CATCHES_PER_STAGE;
       stage += 1;
-      // 일반 모드에서 30판째에 도달하면 즉시 클리어(추가 진행 멈춤)
       if (!masterMode && stage >= TOTAL_STAGES) break;
     }
-    recalcZone();
-    reconcileBalls();   // 5의 배수 넘으면 공 +1 (부드러운 등장)
+    recomputeKinematics();
+    reconcileBalls();
     updateHud();
 
-    // 30판 도달 → 클리어 (마스터모드 진입 흐름은 winGame 화면에서)
+    // 클리어 검사(체크포인트보다 우선)
     if (!masterMode && stage >= TOTAL_STAGES) { winGame(); return; }
 
-    // 유리화: 판 기반 — 10판마다 한 번 보너스(받은 공만 유리화, 받기 쉬운 강타).
-    if (stage % 10 === 0 && !b.glass && combo >= 3) {
-      b.glass = true; b.glassTimer = 1.2;
-      spawnShards(b);
-      playGlassBreak();
-      shake = 10;
-      vibrate([40, 30, 40, 30, 60]); // 유리화 햅틱(강)
-      combo = 0;   // 콤보 리셋
-      updateHud();
-    } else {
-      maybeZen();
+    // 판이 실제로 올랐다면(여러 판 점프 가능) — 가장 최근 클리어 판들 처리
+    for (let s = prevStage; s < stage; s++) {
+      const cleared = s;  // s판을 막 깬 것
+      // 토스트(비차단)
+      showToast(cleared + '판 클리어!');
+      // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
+      if (cleared % 3 === 0) { enterCheckpoint(cleared); return; }
     }
   }
 
-  function spawnShards(b) {
-    for (let i = 0; i < 22; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 120 + Math.random() * 360;
-      particles.push({
-        x: b.x, y: b.y,
-        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
-        life: 0.7 + Math.random() * 0.4, age: 0,
-        size: 3 + Math.random() * 6, rot: Math.random() * Math.PI,
-      });
-    }
-  }
-
-  // 클리어 축하 파티클 (화면 하단에서 솟구치는 컨페티)
   function spawnWinParticles() {
     const colors = [COL.primary, COL.secondary, COL.refractFrom, COL.refractTo, '#FFFFFF'];
     for (let i = 0; i < 120; i++) {
@@ -625,59 +1043,68 @@
     }
   }
 
-  // ---------- 입력 (멀티터치: 각 손가락이 가장 가까운 공 1개 처리) ----------
-  // 한 점(px,py)으로 가장 가까운 받을 수 있는 공을 찾아 튕김. 이미 처리한 공은 hitSet 으로 중복 방지.
+  // ---------- 입력 ----------
   function tryHit(px, py, hitSet) {
     if (state !== STATE.PLAYING) return;
     const inZone = py >= zoneTop();
     if (!inZone) return;
     let target = null, bestD = Infinity;
     for (const b of balls) {
-      if (b.entering) continue;            // 등장 중인 공은 아직 못 받음
+      if (b.entering) continue;
       if (hitSet && hitSet.has(b.id)) continue;
-      if (b.vy < -80) continue;            // 내려오는/거의 정점일 때만
+      if (b.vy < -80) continue;
       const d = Math.hypot(px - b.x, py - b.y);
       const hitR = b.r + 36;
-      // 눈 감고 모드: 띠 안이면 관대하게(가장 가까운 공)
-      if (d < hitR || blindMode) {
-        if (d < bestD) { bestD = d; target = b; }
-      }
+      if (d < hitR || blindMode) { if (d < bestD) { bestD = d; target = b; } }
     }
     if (target) {
       if (hitSet) hitSet.add(target.id);
-      doBounce(target);
+      doBounce(target, false);
     }
   }
 
-  // 이벤트에서 모든 포인터 좌표를 캔버스 좌표로 변환해 배열로 반환
   function pointsFromEvent(e) {
     const rect = canvas.getBoundingClientRect();
     const pts = [];
     if (e.touches || e.changedTouches) {
       const list = e.changedTouches && e.changedTouches.length ? e.changedTouches : e.touches;
-      for (let i = 0; i < list.length; i++) {
-        pts.push({ x: list[i].clientX - rect.left, y: list[i].clientY - rect.top });
-      }
+      for (let i = 0; i < list.length; i++) pts.push({ x: list[i].clientX - rect.left, y: list[i].clientY - rect.top });
     } else {
       pts.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     }
     return pts;
   }
 
+  let paddleDragging = false;
   function onPointer(e) {
     ensureAudio();
     if (state !== STATE.PLAYING) return;
     e.preventDefault();
     const pts = pointsFromEvent(e);
-    const hitSet = new Set();   // 한 제스처에서 같은 공을 두 손가락이 중복 처리 방지
+    // 패들이 있으면 하단 근처 터치는 패들 드래그
+    if (paddle && pts.length) {
+      const py = pts[0].y;
+      if (py > paddleY() - 80) { paddleDragging = true; paddle.x = pts[0].x; }
+    }
+    const hitSet = new Set();
     for (const p of pts) tryHit(p.x, p.y, hitSet);
   }
+  function onPointerMove(e) {
+    if (state !== STATE.PLAYING || !paddle || !paddleDragging) return;
+    e.preventDefault();
+    const pts = pointsFromEvent(e);
+    if (pts.length) paddle.x = Math.max(paddle.half, Math.min(W - paddle.half, pts[0].x));
+  }
+  function onPointerUp() { paddleDragging = false; }
   canvas.addEventListener('touchstart', onPointer, { passive: false });
   canvas.addEventListener('mousedown', onPointer);
+  canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+  canvas.addEventListener('mousemove', (e) => { if (paddleDragging) onPointerMove(e); });
+  canvas.addEventListener('touchend', onPointerUp);
+  canvas.addEventListener('mouseup', onPointerUp);
 
   // ---------- 업데이트 ----------
   function update(dt) {
-    // 슬로우모션
     if (slowTimer > 0) {
       slowTimer -= dt;
       slowFactor = 0.34;
@@ -685,67 +1112,69 @@
     } else slowFactor = 1;
 
     const sdt = dt * slowFactor;
+    const py = paddleY();
 
-    let fell = false;   // 아무 공이나 바닥으로 떨어지면 게임오버(저글링 룰)
-    for (const b of balls) {
+    let fell = false;
+    for (let i = 0; i < balls.length; i++) {
+      const b = balls[i];
       if (b.entering) {
-        // 화면 위에서 spawnY 까지 부드럽게 미끄러져 진입(중력 면제)
         b.x += b.vx * sdt;
-        b.y += (b.spawnY - b.y) * Math.min(1, dt * 4) + 260 * sdt;   // 위에서 아래로 흘러내림
+        b.y += (b.spawnY - b.y) * Math.min(1, dt * 4) + 260 * sdt;
         if (b.y >= b.spawnY) { b.entering = false; b.vy = 0; }
-        // 진입 중 좌우 벽 클램프
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); }
         if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
       } else {
-        b.vy += GRAVITY * sdt;
+        const g = (b.vy < 0) ? gUp : gDown;   // 마스터모드는 분리, 그 외엔 동일
+        b.vy += g * sdt;
         b.x += b.vx * sdt;
         b.y += b.vy * sdt;
 
-        // 좌우 벽 반사
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.8; }
         if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.8; }
 
-        // 바닥 = 게임오버 (공 하나라도 영역 아래로 떨어지면)
+        // 패들 충돌(바닥 체크보다 먼저). 낙하 중(vy>0)이고 패들 밴드에 닿으면 자동 반사+캐치.
+        if (paddle && b.vy > 0 && b.y + b.r >= py - PADDLE_BAND / 2 && b.y - b.r <= py + PADDLE_BAND / 2) {
+          if (b.x >= paddle.x - paddle.half && b.x <= paddle.x + paddle.half) {
+            b.y = py - PADDLE_BAND / 2 - b.r;
+            doBounce(b, true);
+            paddle.bouncesLeft -= 1;
+            if (paddle.bouncesLeft <= 0) consumePaddleSticks();
+            // doBounce가 공을 제거(터짐)했을 수 있으니 인덱스 보정
+            if (balls[i] !== b) { i--; continue; }
+          }
+        }
+
         if (b.y - b.r > H) fell = true;
       }
 
-      // squash & stretch 회복
       b.sx += (1 - b.sx) * Math.min(1, dt * 9);
       b.sy += (1 - b.sy) * Math.min(1, dt * 9);
       b.spinPhase += b.vx * sdt * 0.01;
 
-      // trail
       b.trail.push({ x: b.x, y: b.y, r: b.r });
       if (b.trail.length > 10) b.trail.shift();
-
-      // 유리화 타이머(공별)
-      if (b.glass) { b.glassTimer -= dt; if (b.glassTimer <= 0) b.glass = false; }
     }
 
-    // 파티클
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.age += dt;
-      p.vy += GRAVITY * 0.5 * dt;
-      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 6;
+      if (!p.ring) { p.vy += gNow * 0.4 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 6; }
       if (p.age >= p.life) particles.splice(i, 1);
     }
 
-    // 플래시·셰이크 감쇠
     flashAlpha *= Math.max(0, 1 - dt * 4);
     shake *= Math.max(0, 1 - dt * 8);
+    if (toastTimer > 0) toastTimer -= dt;
 
-    // 바닥 = 게임오버 (어떤 공이든 떨어지면)
     if (fell) gameOver();
   }
 
-  // 클리어 화면 파티클·플래시 갱신
   function updateWin(dt) {
     flashAlpha *= Math.max(0, 1 - dt * 3);
     for (let i = winParticles.length - 1; i >= 0; i--) {
       const p = winParticles[i];
       p.age += dt;
-      p.vy += GRAVITY * 0.35 * dt;
+      p.vy += 900 * dt;
       p.vx *= (1 - dt * 0.6);
       p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 5;
       if (p.age >= p.life) winParticles.splice(i, 1);
@@ -753,6 +1182,11 @@
   }
 
   // ---------- 렌더 ----------
+  function drawBackground() {
+    const bg = bgById(store.equipped.bg);
+    bg.render(ctx);
+  }
+
   function drawZone() {
     const top = zoneTop();
     ctx.save();
@@ -765,17 +1199,15 @@
     ctx.restore();
   }
 
-  function drawBalls() {
-    for (const b of balls) drawOneBall(b);
-  }
+  function drawBalls() { for (const b of balls) drawOneBall(b); }
 
   function drawOneBall(b) {
     const x = b.x, y = b.y, r = b.r;
-    const frozen = b.glass;
+    const ripeness = Math.min(1, b.pops / POP_AT);
     // 잔상
     for (let i = 0; i < b.trail.length; i++) {
       const t = b.trail[i];
-      const a = (i / b.trail.length) * 0.22;
+      const a = (i / b.trail.length) * 0.18;
       ctx.beginPath();
       ctx.arc(t.x, t.y, t.r * (0.6 + i / b.trail.length * 0.4), 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(213,58,107,' + a.toFixed(3) + ')';
@@ -786,32 +1218,33 @@
     ctx.translate(x, y);
     ctx.scale(b.sx, b.sy);
 
-    // 본체: 라디얼 그라데이션(유리/굴절)
-    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-    if (frozen) {
-      grad.addColorStop(0, 'rgba(220,240,255,0.95)');
-      grad.addColorStop(0.5, 'rgba(150,190,230,0.55)');
-      grad.addColorStop(1, 'rgba(80,110,160,0.35)');
-    } else {
-      grad.addColorStop(0, 'rgba(255,255,255,0.92)');
-      grad.addColorStop(0.35, hexToRgba(COL.refractFrom, 0.55));
-      grad.addColorStop(0.75, hexToRgba(COL.refractTo, 0.45));
-      grad.addColorStop(1, hexToRgba(COL.refractTo, 0.12));
-    }
+    // 스킨 본체 (원점 기준)
+    const skin = skinById(store.equipped.skin);
+    skin.draw(ctx, 0, 0, r, b.spinPhase);
+
+    // 굴절 림
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = grad; ctx.fill();
-
-    // 굴절 림 (가장자리 밝은 테)
     ctx.lineWidth = Math.max(1.5, r * 0.06);
-    ctx.strokeStyle = SHADE.glassFaint;
-    ctx.stroke();
+    ctx.strokeStyle = SHADE.glassFaint; ctx.stroke();
 
-    // 내부 굴절 보라→분홍 코어
-    const core = ctx.createLinearGradient(-r * 0.4, -r * 0.4, r * 0.4, r * 0.5);
-    core.addColorStop(0, hexToRgba(COL.refractFrom, frozen ? 0.15 : 0.5));
-    core.addColorStop(1, hexToRgba(COL.refractTo, frozen ? 0.12 : 0.4));
-    ctx.beginPath(); ctx.arc(Math.cos(b.spinPhase) * r * 0.15, r * 0.12, r * 0.5, 0, Math.PI * 2);
-    ctx.fillStyle = core; ctx.fill();
+    // 익음(ripeness) 공통 오버레이: 0~0.7 회색화, 0.7~1 백색화
+    if (ripeness > 0.01) {
+      let overAlpha, overCol;
+      if (ripeness <= 0.7) {
+        overAlpha = (ripeness / 0.7) * 0.55;
+        overCol = SHADE.ripeGrey;
+      } else {
+        overAlpha = 0.55 + ((ripeness - 0.7) / 0.3) * 0.42;
+        overCol = '#FFFFFF';
+      }
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = hexToRgba(overCol, overAlpha); ctx.fill();
+      // 임계 임박 글로우
+      if (ripeness > 0.85) {
+        ctx.beginPath(); ctx.arc(0, 0, r * (1.05 + Math.sin(performance.now() / 120) * 0.05), 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(2, r * 0.08); ctx.stroke();
+      }
+    }
 
     // 하이라이트
     ctx.beginPath();
@@ -823,11 +1256,20 @@
 
   function drawParticles() {
     for (const p of particles) {
-      const a = 1 - p.age / p.life;
+      const a = Math.max(0, 1 - p.age / p.life);
+      if (p.ring) {
+        const rr = p.size * (1 + p.age / p.life * 2.2);
+        ctx.save();
+        ctx.globalAlpha = a * 0.6;
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4 * a;
+        ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.translate(p.x, p.y); ctx.rotate(p.rot);
       ctx.globalAlpha = a;
-      ctx.fillStyle = SHADE.shard;
+      ctx.fillStyle = p.color || SHADE.shard;
       ctx.beginPath();
       ctx.moveTo(0, -p.size); ctx.lineTo(p.size * 0.7, p.size * 0.5); ctx.lineTo(-p.size * 0.6, p.size * 0.5);
       ctx.closePath(); ctx.fill();
@@ -836,55 +1278,83 @@
     ctx.globalAlpha = 1;
   }
 
-  // 떠오르는 콤보 음표/숫자
+  function drawPaddle() {
+    if (!paddle) return;
+    const py = paddleY();
+    ctx.save();
+    const x0 = paddle.x - paddle.half, w = paddle.half * 2;
+    const g = ctx.createLinearGradient(0, py - PADDLE_BAND, 0, py + PADDLE_BAND);
+    g.addColorStop(0, SHADE.stick); g.addColorStop(1, SHADE.stickDark);
+    ctx.fillStyle = g;
+    roundRect(ctx, x0, py - PADDLE_BAND / 2, w, PADDLE_BAND, PADDLE_BAND / 2); ctx.fill();
+    // 내구도 표시
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 13px ' + COL_FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(paddle.bouncesLeft + '', paddle.x, py);
+    ctx.restore();
+  }
+
   function drawComboFloat() {
     if (combo <= 0 || balls.length === 0) return;
-    // 가장 높이 떠 있는 공 위에 표시(가장 눈에 띔)
     let anchor = balls[0];
     for (const b of balls) if (b.y < anchor.y) anchor = b;
     ctx.save();
     const pulse = 1 + Math.sin(performance.now() / 220) * 0.05;
     ctx.translate(anchor.x, anchor.y - anchor.r - 40);
     ctx.scale(pulse, pulse);
-    ctx.font = '800 ' + Math.round(anchor.r * 1.1) + 'px ' + COL_FONT;
+    ctx.font = '800 ' + Math.round(anchor.r * 0.9) + 'px ' + COL_FONT;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = COL.secondary;
     ctx.shadowColor = hexToRgba(COL.secondary, 0.6); ctx.shadowBlur = 18;
     ctx.fillText('♪' + combo, 0, 0);
     ctx.restore();
   }
-  const COL_FONT = "'Pretendard Variable', -apple-system, sans-serif";
+
+  function drawToast() {
+    if (toastTimer <= 0) return;
+    const a = Math.min(1, toastTimer / 0.3);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.font = '800 30px ' + COL_FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const ty = H * 0.16;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    roundRect(ctx, W / 2 - 130, ty - 28, 260, 56, 16); ctx.fill();
+    ctx.fillStyle = COL.secondary;
+    ctx.shadowColor = hexToRgba(COL.secondary, 0.5); ctx.shadowBlur = 14;
+    ctx.fillText(toastText, W / 2, ty);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
 
   function render() {
     ctx.save();
     if (shake > 0.5) ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
 
-    // 배경
-    ctx.fillStyle = COL.bg;
-    ctx.fillRect(-20, -20, W + 40, H + 40);
+    drawBackground();
 
-    if (state === STATE.PLAYING) {
-      // 눈 감고 모드: 화면 검게 (공·띠 숨김)
-      if (blindMode) {
+    if (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT) {
+      if (blindMode && state === STATE.PLAYING) {
         ctx.fillStyle = '#000';
         ctx.fillRect(-20, -20, W + 40, H + 40);
       } else {
         drawZone();
         drawParticles();
         drawBalls();
+        drawPaddle();
         drawComboFloat();
       }
-      // Zen 디밍
-      if (slowFactor < 1) {
+      if (slowFactor < 1 && state === STATE.PLAYING) {
         ctx.fillStyle = SHADE.zenDim;
         ctx.fillRect(-20, -20, W + 40, H + 40);
-        if (!blindMode) { drawBalls(); drawComboFloat(); }
+        if (!blindMode) { drawBalls(); drawPaddle(); drawComboFloat(); }
       }
-      // Zen 성공 플래시
       if (flashAlpha > 0.01) {
         ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha.toFixed(3) + ')';
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
+      drawToast();
     } else if (state === STATE.WIN) {
       drawWinParticles();
       if (flashAlpha > 0.01) {
@@ -912,19 +1382,11 @@
   function loop(now) {
     let dt = (now - lastTime) / 1000;
     lastTime = now;
-    if (dt > MAX_DT) dt = MAX_DT;   // 백그라운드 복귀 폭주 clamp
+    if (dt > MAX_DT) dt = MAX_DT;
     if (state === STATE.PLAYING) update(dt);
     else if (state === STATE.WIN) updateWin(dt);
     render();
     requestAnimationFrame(loop);
-  }
-
-  // ---------- 색 유틸 ----------
-  function hexToRgba(hex, a) {
-    let h = hex.replace('#', '');
-    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-    const n = parseInt(h, 16);
-    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
 
   // ---------- 공유 카드 ----------
@@ -933,7 +1395,6 @@
     const cv = document.createElement('canvas');
     cv.width = cw; cv.height = ch;
     const c = cv.getContext('2d');
-    // 배경 그라데이션
     const g = c.createLinearGradient(0, 0, cw, ch);
     g.addColorStop(0, COL.primary); g.addColorStop(1, COL.secondary);
     c.fillStyle = g; c.fillRect(0, 0, cw, ch);
@@ -946,12 +1407,10 @@
     c.fillText('튕기기', cw / 2, 180);
     c.font = "500 28px " + COL_FONT; c.fillStyle = '#9CA3AF';
     c.fillText(masterMode ? '마스터모드' : (cleared ? '30판 정복!' : '30판 도전'), cw / 2, 230);
-
     c.font = "800 150px " + COL_FONT; c.fillStyle = COL.secondary;
     c.fillText(String(stage), cw / 2, 460);
     c.font = "500 32px " + COL_FONT; c.fillStyle = '#FFFFFF';
     c.fillText('판 도달', cw / 2, 525);
-
     c.font = "700 30px " + COL_FONT; c.fillStyle = '#FFFFFF';
     c.fillText('최고 도달 ' + best + '판', cw / 2, 620);
     c.font = "600 26px " + COL_FONT; c.fillStyle = '#9CA3AF';
@@ -961,12 +1420,9 @@
     if (!blob) return;
     const file = new File([blob], 'pung-score.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: '튕기기', text: stage + '판 도달!' });
-        return;
-      } catch (e) { /* 취소/실패 → 폴백 */ }
+      try { await navigator.share({ files: [file], title: '튕기기', text: stage + '판 도달!' }); return; }
+      catch (e) { /* 폴백 */ }
     }
-    // 폴백: 다운로드
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'pung-score.png';
@@ -975,6 +1431,7 @@
   }
 
   function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
     c.beginPath();
     c.moveTo(x + r, y);
     c.arcTo(x + w, y, x + w, y + h, r);
@@ -982,6 +1439,241 @@
     c.arcTo(x, y + h, x, y, r);
     c.arcTo(x, y, x + w, y, r);
     c.closePath();
+  }
+
+  // ================= 상점 UI =================
+  let shopReturnTo = STATE.MENU;   // 닫을 때 돌아갈 상태(메뉴 or 일시정지)
+
+  function openShop(fromPause) {
+    shopReturnTo = fromPause ? STATE.PAUSED : STATE.MENU;
+    if (fromPause) elPause.classList.add('hidden');
+    else elMenu.classList.add('hidden');
+    elShop.classList.remove('hidden');
+    showTab('balls');
+    renderShop();
+  }
+  function closeShop() {
+    elShop.classList.add('hidden');
+    if (shopReturnTo === STATE.PAUSED) elPause.classList.remove('hidden');
+    else elMenu.classList.remove('hidden');
+  }
+  function showTab(which) {
+    elGridBalls.classList.toggle('hidden', which !== 'balls');
+    elGridBgs.classList.toggle('hidden', which !== 'bgs');
+    elGridItems.classList.toggle('hidden', which !== 'items');
+    elTabBalls.setAttribute('aria-pressed', String(which === 'balls'));
+    elTabBgs.setAttribute('aria-pressed', String(which === 'bgs'));
+    elTabItems.setAttribute('aria-pressed', String(which === 'items'));
+  }
+
+  function renderShop() {
+    elShopCoins.textContent = getCoins() + ' 🪙';
+    renderSkinGrid();
+    renderBgGrid();
+    renderItemGrid();
+    renderStickTray();
+  }
+
+  // 카드 미리보기 캔버스
+  function makePreviewCanvas(drawFn) {
+    const cv = document.createElement('canvas');
+    cv.width = 120; cv.height = 120;
+    cv.className = 'shop-prev';
+    const c = cv.getContext('2d');
+    drawFn(c, cv.width, cv.height);
+    return cv;
+  }
+
+  function buildCard(prevCanvas, name, owned, equipped, price, onAction) {
+    const card = document.createElement('div');
+    card.className = 'shop-card';
+    card.appendChild(prevCanvas);
+    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = name;
+    card.appendChild(nm);
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (equipped ? 'btn-ghost' : 'btn-primary');
+    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
+    if (equipped) { btn.textContent = '장착됨'; btn.disabled = true; }
+    else if (owned) { btn.textContent = '장착'; }
+    else { btn.textContent = price + ' 🪙'; }
+    btn.addEventListener('click', onAction);
+    card.appendChild(btn);
+    return card;
+  }
+
+  function renderSkinGrid() {
+    elGridBalls.innerHTML = '';
+    for (const skin of SKINS) {
+      const owned = isOwned('skins', skin.id);
+      const equipped = store.equipped.skin === skin.id;
+      const prev = makePreviewCanvas((c, cw, ch) => {
+        c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+        skin.draw(c, cw / 2, ch / 2, cw * 0.36, 0.6);
+      });
+      const card = buildCard(prev, skin.name, owned, equipped, skin.price, () => {
+        if (equipped) return;
+        if (owned) { equip('skin', skin.id); }
+        else { if (!buy('skins', skin.id, skin.price)) { showShopMsg('코인이 부족해요'); return; } equip('skin', skin.id); }
+        renderShop();
+      });
+      elGridBalls.appendChild(card);
+    }
+  }
+
+  function renderBgGrid() {
+    elGridBgs.innerHTML = '';
+    for (const bg of BGS) {
+      const owned = isOwned('bgs', bg.id);
+      const equipped = store.equipped.bg === bg.id;
+      const prev = makePreviewCanvas((c, cw, ch) => {
+        // 배경 미리보기: 임시 W/H 컨텍스트 흉내 (render는 전역 W/H 사용하므로 직접 미니 렌더)
+        miniBgPreview(c, bg.id, cw, ch);
+      });
+      let label = bg.name;
+      const card = buildCard(prev, label, owned, equipped, bg.price, () => {
+        if (equipped) return;
+        if (bg.id === 'photo' && owned && !store.photo) { elPhotoInput.click(); return; }
+        if (owned) { equip('bg', bg.id); }
+        else {
+          if (bg.id === 'photo') {
+            // 사진 배경: 사면서 사진 먼저 고르게
+            if (!buy('bgs', bg.id, bg.price)) { showShopMsg('코인이 부족해요'); return; }
+            equip('bg', bg.id);
+            elPhotoInput.click();
+          } else {
+            if (!buy('bgs', bg.id, bg.price)) { showShopMsg('코인이 부족해요'); return; }
+            equip('bg', bg.id);
+          }
+        }
+        renderShop();
+      });
+      elGridBgs.appendChild(card);
+    }
+  }
+
+  function miniBgPreview(c, id, cw, ch) {
+    if (id === 'default') { c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch); }
+    else if (id === 'sunset') {
+      const g = c.createLinearGradient(0, 0, 0, ch);
+      g.addColorStop(0, '#2A1B3D'); g.addColorStop(0.5, '#B5446E'); g.addColorStop(1, '#F2994A');
+      c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+    } else if (id === 'space') {
+      const g = c.createLinearGradient(0, 0, 0, ch);
+      g.addColorStop(0, '#05060F'); g.addColorStop(1, '#15203A');
+      c.fillStyle = g; c.fillRect(0, 0, cw, ch);
+      c.fillStyle = '#FFFFFF';
+      for (let i = 0; i < 20; i++) c.fillRect((i * 53 % 100) / 100 * cw, (i * 31 % 100) / 100 * ch, 1.5, 1.5);
+    } else if (id === 'photo') {
+      if (photoImg && photoImg.width) {
+        c.drawImage(photoImg, 0, 0, cw, ch);
+      } else {
+        c.fillStyle = '#2B2D35'; c.fillRect(0, 0, cw, ch);
+        c.fillStyle = '#9CA3AF'; c.font = '600 13px ' + COL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('사진 선택', cw / 2, ch / 2);
+      }
+    }
+  }
+
+  function renderItemGrid() {
+    elGridItems.innerHTML = '';
+    // 막대기 카드
+    const prev = makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+      const g = c.createLinearGradient(0, ch / 2 - 12, 0, ch / 2 + 12);
+      g.addColorStop(0, SHADE.stick); g.addColorStop(1, SHADE.stickDark);
+      c.fillStyle = g;
+      roundRect(c, cw * 0.12, ch / 2 - 9, cw * 0.76, 18, 9); c.fill();
+    });
+    const card = document.createElement('div');
+    card.className = 'shop-card';
+    card.appendChild(prev);
+    const nm = document.createElement('div'); nm.className = 'shop-name';
+    nm.textContent = '막대기 (보유 ' + store.sticks + ')';
+    card.appendChild(nm);
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
+    btn.textContent = STICK_PRICE + ' 🪙 구매';
+    btn.addEventListener('click', () => {
+      if (!spend(STICK_PRICE)) { showShopMsg('코인이 부족해요'); return; }
+      store.sticks += 1; saveStore();
+      renderShop();
+    });
+    card.appendChild(btn);
+    elGridItems.appendChild(card);
+
+    // 안내
+    const info = document.createElement('div');
+    info.className = 'shop-info';
+    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. 게임 화면 하단 트레이에서 켜고, 막대당 3번 받으면 사라져요. 합치기로 더 긴 패들을 만들 수 있습니다.';
+    elGridItems.appendChild(info);
+  }
+
+  let shopMsgTimer = null;
+  function showShopMsg(text) {
+    elShopCoins.textContent = text;
+    if (shopMsgTimer) clearTimeout(shopMsgTimer);
+    shopMsgTimer = setTimeout(() => { elShopCoins.textContent = getCoins() + ' 🪙'; }, 1200);
+  }
+
+  // 사진 업로드 → 다운스케일 → store.photo
+  function onPhotoSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 720;
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else if (h >= w && h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        let dataUrl;
+        try { dataUrl = cv.toDataURL('image/jpeg', 0.7); } catch (err) { showShopMsg('사진을 읽지 못했어요'); return; }
+        store.photo = dataUrl;
+        // 사진 배경 자동 소유/장착
+        if (!isOwned('bgs', 'photo')) store.owned.bgs.push('photo');
+        store.equipped.bg = 'photo';
+        saveStore();
+        if (!store.photo) { showShopMsg('사진 용량 초과 — 더 작은 사진을'); }
+        loadPhotoImage();
+        renderShop();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  // ================= 스틱 트레이 (게임 중) =================
+  function renderStickTray() {
+    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
+    if (!inPlay || store.sticks <= 0) { elStickTray.classList.add('hidden'); return; }
+    elStickTray.classList.remove('hidden');
+    elStickTray.innerHTML = '';
+    // 합치기 토글
+    const merge = document.createElement('button');
+    merge.id = 'stickMergeBtn';
+    merge.className = 'stick-merge' + (mergeSticks ? ' on' : '');
+    merge.textContent = mergeSticks ? '합치기 ON' : '합치기';
+    merge.addEventListener('click', () => { mergeSticks = !mergeSticks; if (paddle) activatePaddle(); renderStickTray(); });
+    elStickTray.appendChild(merge);
+    // 아이콘 최대 3개
+    const show = Math.min(3, store.sticks);
+    for (let i = 0; i < show; i++) {
+      const ic = document.createElement('button');
+      ic.className = 'stick-icon' + (paddle ? ' active' : '');
+      ic.textContent = '|';
+      ic.addEventListener('click', () => { if (paddle) { paddle = null; } else { activatePaddle(); } renderStickTray(); });
+      elStickTray.appendChild(ic);
+    }
+    if (store.sticks > 3) {
+      const more = document.createElement('span'); more.className = 'stick-more'; more.textContent = '+' + (store.sticks - 3);
+      elStickTray.appendChild(more);
+    }
   }
 
   // ---------- UI 바인딩 ----------
@@ -1008,21 +1700,40 @@
     muted = !muted; ensureAudio(); setMasterMute(); refreshToggleLabels();
   });
 
-  // 백그라운드: 시간 기준 리셋 + 오디오 일시정지(배터리·스케줄 폭주 방지)
+  // 상점
+  elShopBtn.addEventListener('click', () => openShop(false));
+  elPauseShopBtn.addEventListener('click', () => openShop(true));
+  elShopBack.addEventListener('click', closeShop);
+  elTabBalls.addEventListener('click', () => showTab('balls'));
+  elTabBgs.addEventListener('click', () => showTab('bgs'));
+  elTabItems.addEventListener('click', () => showTab('items'));
+  elPhotoInput.addEventListener('change', onPhotoSelected);
+
+  // 일시정지
+  elPauseBtn.addEventListener('click', pauseGame);
+  elPauseResume.addEventListener('click', resumeGame);
+  elPauseMenu.addEventListener('click', toMenu);
+
+  // 체크포인트
+  elCpContinue.addEventListener('click', resumeFromCheckpoint);
+  elCpStop.addEventListener('click', toMenu);
+
+  // 합치기(오버레이용 — 트레이 버튼과 동기화)
+  if (elStickMerge) elStickMerge.addEventListener('click', () => {
+    mergeSticks = !mergeSticks; if (paddle) activatePaddle(); renderStickTray();
+  });
+
+  // 백그라운드
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) { /* 미지원 무시 */ } }
+      if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) { /* 무시 */ } }
     } else {
       lastTime = performance.now();
-      if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 미지원 무시 */ } }
-      // 음악 스케줄러 시점이 정지 중 어긋났으면 현재 시각으로 복구
-      if (music.on && actx && music.nextNoteTime < actx.currentTime) {
-        music.nextNoteTime = actx.currentTime + 0.05;
-      }
+      if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+      if (music.on && actx && music.nextNoteTime < actx.currentTime) music.nextNoteTime = actx.currentTime + 0.05;
     }
   });
 
-  // 첫 제스처에 AudioContext resume
   ['touchstart', 'mousedown', 'keydown'].forEach((ev) =>
     window.addEventListener(ev, ensureAudio, { once: false }));
 

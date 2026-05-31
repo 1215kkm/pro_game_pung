@@ -94,10 +94,68 @@
     font-size: var(--font-sm); z-index: 6; pointer-events: none; opacity: 0.7;
   }
   .blind-banner.hidden { display: none; }
+
+  /* ===== 상단 버튼(일시정지·상점) ===== */
+  .corner-btn {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md));
+    z-index: 7; width: 44px; height: 44px; border-radius: var(--radius-full);
+    border: 1px solid var(--dark-border); background: var(--dark-tertiary);
+    color: var(--text-primary); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .corner-btn.left { left: var(--spacing-md); }
+  .corner-btn.hidden { display: none; }
+
+  /* ===== 상점 ===== */
+  .shop-head { display: flex; align-items: center; justify-content: space-between;
+    width: 100%; max-width: 520px; gap: var(--spacing-md); }
+  .shop-coins { font-size: var(--font-xl); font-weight: 800; color: var(--secondary);
+    font-variant-numeric: tabular-nums; }
+  .shop-tabs { display: flex; gap: var(--spacing-sm); width: 100%; max-width: 520px; }
+  .shop-tabs .btn { flex: 1; padding: 10px 0; font-size: var(--font-sm); }
+  .shop-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-md);
+    width: 100%; max-width: 520px; overflow-y: auto; padding: var(--spacing-xs);
+    max-height: 56vh;
+  }
+  .shop-grid.hidden { display: none; }
+  .shop-card {
+    background: var(--dark-tertiary); border: 1px solid var(--dark-border);
+    border-radius: var(--radius-xl); padding: var(--spacing-md);
+    display: flex; flex-direction: column; align-items: center; gap: var(--spacing-sm);
+  }
+  .shop-prev { width: 88px; height: 88px; border-radius: var(--radius-md); background: var(--canvas-bg); }
+  .shop-name { font-size: var(--font-sm); font-weight: 600; text-align: center; }
+  .shop-info { grid-column: 1 / -1; font-size: var(--font-sm); color: var(--text-secondary);
+    line-height: 1.5; text-align: left; }
+
+  /* ===== 스틱 트레이 ===== */
+  .stick-tray {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 18px);
+    left: 0; right: 0; z-index: 6;
+    display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm);
+  }
+  .stick-tray.hidden { display: none; }
+  .stick-icon, .stick-merge {
+    border: 1px solid var(--dark-border); background: var(--dark-tertiary);
+    color: var(--text-primary); border-radius: var(--radius-md); cursor: pointer;
+    min-height: 40px; font-weight: 700;
+  }
+  .stick-icon { width: 40px; font-size: 20px; }
+  .stick-icon.active { border-color: var(--secondary); color: var(--secondary); }
+  .stick-merge { padding: 0 14px; font-size: var(--font-sm); }
+  .stick-merge.on { border-color: var(--secondary); color: var(--secondary); }
+  .stick-more { color: var(--text-secondary); font-weight: 700; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+
+<!-- 게임 중 좌상단 일시정지 -->
+<button class="corner-btn left hidden" id="pauseBtn" aria-label="일시정지">⏸</button>
+
+<!-- 스틱 트레이(게임 중) -->
+<div class="stick-tray hidden" id="stickTray"></div>
 
 <div id="hud" class="hidden" aria-hidden="true">
   <div class="stage-wrap">
@@ -115,12 +173,52 @@
 <!-- 메뉴 -->
 <div class="overlay" id="menu">
   <h1 class="title">튕기기</h1>
-  <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판으로 — 30판을 정복하세요. 5판마다 공이 하나씩 늘어 저글링이 됩니다. 하나라도 떨어뜨리면 끝! 판이 오를수록 영역이 좁아지고 음악이 거세집니다.</p>
+  <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.</p>
   <div class="best" id="menuBest">최고 도달 1판</div>
   <button class="btn btn-primary" id="startBtn">게임 시작</button>
   <div class="toggles">
+    <button class="btn btn-ghost" id="shopBtn">상점</button>
     <button class="btn btn-ghost" id="blindToggle" aria-pressed="false">눈 감고 치기 끄기</button>
     <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
+  </div>
+</div>
+
+<!-- 상점 -->
+<div class="overlay hidden" id="shop">
+  <div class="shop-head">
+    <h2 class="title" style="font-size:var(--font-2xl)">상점</h2>
+    <span class="shop-coins" id="shopCoins">0 🪙</span>
+  </div>
+  <div class="shop-tabs">
+    <button class="btn btn-ghost" id="tabBalls" aria-pressed="true">공 스킨</button>
+    <button class="btn btn-ghost" id="tabBgs" aria-pressed="false">배경</button>
+    <button class="btn btn-ghost" id="tabItems" aria-pressed="false">아이템</button>
+  </div>
+  <div class="shop-grid" id="gridBalls"></div>
+  <div class="shop-grid hidden" id="gridBgs"></div>
+  <div class="shop-grid hidden" id="gridItems"></div>
+  <button class="btn btn-primary" id="shopBack">닫기</button>
+  <input type="file" id="photoInput" accept="image/*" style="display:none" />
+</div>
+
+<!-- 일시정지 -->
+<div class="overlay hidden" id="pause">
+  <h2 class="title" style="font-size:var(--font-2xl)">일시정지</h2>
+  <div class="gameover-row">
+    <button class="btn btn-primary" id="pauseResume">이어하기</button>
+    <button class="btn btn-ghost" id="pauseShopBtn">상점</button>
+    <button class="btn btn-ghost" id="pauseMenu">메뉴</button>
+  </div>
+  <button class="btn btn-ghost" id="stickMerge" style="display:none">합치기</button>
+</div>
+
+<!-- 체크포인트(3판마다) -->
+<div class="overlay hidden" id="checkpoint">
+  <h2 class="clear-title" id="cpTitle">3판 클리어!</h2>
+  <p class="subtitle">계속 도전할까요?</p>
+  <div class="gameover-row">
+    <button class="btn btn-primary" id="cpContinue">계속 도전</button>
+    <button class="btn btn-ghost" id="cpStop">그만하기</button>
   </div>
 </div>
 
