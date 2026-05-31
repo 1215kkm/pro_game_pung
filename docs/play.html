@@ -111,6 +111,20 @@
   .subtitle { font-size: var(--font-md); color: var(--text-secondary); margin: 0; max-width: 320px; line-height: 1.6; }
   .best { font-size: var(--font-lg); color: var(--secondary); font-weight: 700; }
 
+  /* 시작 판 선택기 */
+  .stage-select { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .stage-select.hidden { display: none; }
+  .stage-select .ss-label { font-size: var(--font-sm); color: var(--text-secondary); letter-spacing: 1px; }
+  .stage-select .ss-stepper { display: flex; align-items: center; gap: var(--spacing-md); }
+  .stage-select .ss-btn {
+    width: 44px; height: 44px; border-radius: 999px; border: none; cursor: pointer;
+    font-size: var(--font-xl); font-weight: 800; line-height: 1;
+    color: #fff; background: rgba(255,255,255,0.12);
+  }
+  .stage-select .ss-btn:disabled { opacity: 0.35; cursor: default; }
+  .stage-select .ss-value { min-width: 72px; text-align: center; font-size: var(--font-2xl); font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .stage-select .ss-hint { font-size: var(--font-xs, 12px); color: var(--text-secondary); }
+
   /* 크레딧 */
   .credits-list { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: var(--spacing-md); max-height: 60vh; overflow-y: auto; }
   .credits-head { font-size: var(--font-sm); color: var(--text-secondary); margin: 0 0 4px; line-height: 1.5; }
@@ -236,6 +250,15 @@
   <h1 class="title">튕기기</h1>
   <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.</p>
   <div class="best" id="menuBest">최고 도달 1판</div>
+  <div class="stage-select hidden" id="stageSelect">
+    <span class="ss-label">시작 판</span>
+    <div class="ss-stepper">
+      <button class="ss-btn" id="stageMinus" aria-label="시작 판 줄이기">−</button>
+      <span class="ss-value" id="stageSelVal">1판</span>
+      <button class="ss-btn" id="stagePlus" aria-label="시작 판 늘리기">+</button>
+    </div>
+    <span class="ss-hint" id="stageSelHint">최고 도달 1판까지 선택</span>
+  </div>
   <button class="btn btn-primary" id="startBtn">게임 시작</button>
   <div class="toggles">
     <button class="btn btn-ghost" id="shopBtn">상점</button>
@@ -365,6 +388,11 @@
   const elHudLives = $('hudLives');
   const elMenu = $('menu');
   const elMenuBest = $('menuBest');
+  const elStageSelect = $('stageSelect');
+  const elStageMinus = $('stageMinus');
+  const elStagePlus = $('stagePlus');
+  const elStageSelVal = $('stageSelVal');
+  const elStageSelHint = $('stageSelHint');
   const elStart = $('startBtn');
   const elMuteToggle = $('muteToggle');
   const elGameover = $('gameover');
@@ -486,6 +514,7 @@
 
   let best = 1;                   // 최고 도달 판수
   let bestScore = 0;              // 최고 점수
+  let startStage = 1;             // 메뉴에서 고른 시작 판(1 ~ best)
   let muted = false;
 
   // 게임 변수
@@ -1277,6 +1306,18 @@
     hidePlayChrome();
     elMenu.classList.remove('hidden');
     elMenuBest.textContent = '최고 도달 ' + best + '판';
+    updateStageSelect();
+  }
+
+  // 시작 판 선택기: best>1 일 때만 노출, startStage 를 1~best 로 클램프해 표시.
+  function updateStageSelect() {
+    startStage = Math.max(1, Math.min(best, startStage));
+    if (best <= 1) { elStageSelect.classList.add('hidden'); return; }
+    elStageSelect.classList.remove('hidden');
+    elStageSelVal.textContent = startStage + '판';
+    elStageSelHint.textContent = '최고 도달 ' + best + '판까지 선택';
+    elStageMinus.disabled = startStage <= 1;
+    elStagePlus.disabled = startStage >= best;
   }
 
   // 체크포인트 (3판마다 차단)
@@ -2182,7 +2223,9 @@
     elMuteToggle.setAttribute('aria-pressed', String(muted));
   }
 
-  elStart.addEventListener('click', () => startGame(1));
+  elStart.addEventListener('click', () => startGame(startStage));
+  elStageMinus.addEventListener('click', () => { startStage -= 1; updateStageSelect(); });
+  elStagePlus.addEventListener('click', () => { startStage += 1; updateStageSelect(); });
   elRetry.addEventListener('click', () => startGame(1));
   if (elResume) elResume.addEventListener('click', () => startGame(resumeStage));
   elMenuBtn.addEventListener('click', toMenu);
@@ -2233,6 +2276,7 @@
   // ---------- 부팅 ----------
   resize();
   elMenuBest.textContent = '최고 도달 ' + best + '판';
+  updateStageSelect();
   refreshToggleLabels();
   running = true;
   lastTime = performance.now();
