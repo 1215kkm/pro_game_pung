@@ -175,6 +175,9 @@
   .shop-name { font-size: var(--font-sm); font-weight: 600; text-align: center; }
   .shop-info { grid-column: 1 / -1; font-size: var(--font-sm); color: var(--text-secondary);
     line-height: 1.5; text-align: left; }
+  .stick-buy-row { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; justify-content: center; width: 100%; }
+  .stick-buy-row .btn { flex: 1; min-width: 72px; }
+  .btn-disabled, .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* ===== 스틱 트레이 ===== */
   .stick-tray {
@@ -1908,35 +1911,58 @@
     }
   }
 
+  // 배경은 소모품: 적용(장착)할 때마다 가격만큼 코인 차감. default(가격 0)은 무료.
+  // photo는 업로드 자체는 무료, 배경으로 적용할 때 코인 차감.
   function renderBgGrid() {
     elGridBgs.innerHTML = '';
     for (const bg of BGS) {
-      const owned = isOwned('bgs', bg.id);
       const equipped = store.equipped.bg === bg.id;
+      const free = bg.price <= 0;
       const prev = makePreviewCanvas((c, cw, ch) => {
         // 배경 미리보기: 임시 W/H 컨텍스트 흉내 (render는 전역 W/H 사용하므로 직접 미니 렌더)
         miniBgPreview(c, bg.id, cw, ch);
       });
-      let label = bg.name;
-      const card = buildCard(prev, label, owned, equipped, bg.price, () => {
+      const card = buildBgCard(prev, bg.name, equipped, free, bg.price, () => {
         if (equipped) return;
-        if (bg.id === 'photo' && owned && !store.photo) { elPhotoInput.click(); return; }
-        if (owned) { equip('bg', bg.id); }
-        else {
-          if (bg.id === 'photo') {
-            // 사진 배경: 사면서 사진 먼저 고르게
-            if (!buy('bgs', bg.id, bg.price)) { showShopMsg('코인이 부족해요'); return; }
-            equip('bg', bg.id);
-            elPhotoInput.click();
-          } else {
-            if (!buy('bgs', bg.id, bg.price)) { showShopMsg('코인이 부족해요'); return; }
-            equip('bg', bg.id);
-          }
+        if (bg.id === 'photo') {
+          // 사진이 없으면 먼저 무료 업로드(적용은 사진 선택 후 다시 눌러 차감)
+          if (!store.photo) { elPhotoInput.click(); return; }
+          if (!spend(bg.price)) { showShopMsg('코인이 부족해요'); return; }
+          store.equipped.bg = 'photo'; saveStore();
+        } else if (free) {
+          // 기본 다크: 무료로 되돌리기
+          store.equipped.bg = bg.id; saveStore();
+        } else {
+          if (!spend(bg.price)) { showShopMsg('코인이 부족해요'); return; }
+          store.equipped.bg = bg.id; saveStore();
         }
         renderShop();
       });
       elGridBgs.appendChild(card);
     }
+  }
+
+  // 배경 전용 카드: 소모품 규칙(적용 시 코인 차감). 버튼 라벨은 "적용 (가격 🪙)" / 무료는 "적용".
+  function buildBgCard(prevCanvas, name, equipped, free, price, onAction) {
+    const card = document.createElement('div');
+    card.className = 'shop-card';
+    card.appendChild(prevCanvas);
+    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = name;
+    card.appendChild(nm);
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (equipped ? 'btn-ghost' : 'btn-primary');
+    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
+    if (equipped) {
+      btn.textContent = '적용됨'; btn.disabled = true;
+    } else if (free) {
+      btn.textContent = '적용';
+    } else {
+      btn.textContent = '적용 (' + price + ' 🪙)';
+      if (getCoins() < price) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+    }
+    btn.addEventListener('click', onAction);
+    card.appendChild(btn);
+    return card;
   }
 
   function miniBgPreview(c, id, cw, ch) {
@@ -1978,22 +2004,30 @@
     const nm = document.createElement('div'); nm.className = 'shop-name';
     nm.textContent = '막대기 (보유 ' + store.sticks + ')';
     card.appendChild(nm);
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
-    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
-    btn.textContent = STICK_PRICE + ' 🪙 구매';
-    btn.addEventListener('click', () => {
-      if (!spend(STICK_PRICE)) { showShopMsg('코인이 부족해요'); return; }
-      store.sticks += 1; saveStore();
-      renderShop();
+    // 수량 구매 버튼 3개: +1 / +3 / +5 (각각 가격*수량 spend)
+    const btnRow = document.createElement('div');
+    btnRow.className = 'stick-buy-row';
+    [1, 3, 5].forEach((qty) => {
+      const cost = STICK_PRICE * qty;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
+      btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
+      if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+      btn.addEventListener('click', () => {
+        if (!spend(cost)) { showShopMsg('코인이 부족해요'); return; }
+        store.sticks += qty; saveStore();
+        renderShop();
+      });
+      btnRow.appendChild(btn);
     });
-    card.appendChild(btn);
+    card.appendChild(btnRow);
     elGridItems.appendChild(card);
 
     // 안내
     const info = document.createElement('div');
     info.className = 'shop-info';
-    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. 게임 화면 하단 트레이에서 켜고, 막대당 3번 받으면 사라져요. 합치기로 더 긴 패들을 만들 수 있습니다.';
+    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + STICK_PRICE + ' 🪙). 게임 화면 하단 트레이에서 켜고, 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 3개까지 보이며 합치기로 더 긴 패들을 만들 수 있습니다.';
     elGridItems.appendChild(info);
   }
 
@@ -2022,11 +2056,10 @@
         let dataUrl;
         try { dataUrl = cv.toDataURL('image/jpeg', 0.7); } catch (err) { showShopMsg('사진을 읽지 못했어요'); return; }
         store.photo = dataUrl;
-        // 사진 배경 자동 소유/장착
-        if (!isOwned('bgs', 'photo')) store.owned.bgs.push('photo');
-        store.equipped.bg = 'photo';
+        // 업로드 자체는 무료 — 자동 장착하지 않음. '적용' 버튼을 누를 때 코인 차감.
         saveStore();
         if (!store.photo) { showShopMsg('사진 용량 초과 — 더 작은 사진을'); }
+        else { showShopMsg('사진 준비됨 — 적용을 눌러 배경 적용'); }
         loadPhotoImage();
         renderShop();
       };
