@@ -4,10 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#1B1D21" />
-<title>튕기기 — 30판 정복</title>
+<title>튕글링 — 30판 정복</title>
 <style>
 /* inlined from styles/tokens.css */
-/* 튕기기 게임 테마 토큰 — Crowny Class 시스템 §18 게임·엔터 (레드/옐로) 오버라이드.
+/* 튕글링 게임 테마 토큰 — Crowny Class 시스템 §18 게임·엔터 (레드/옐로) 오버라이드.
    ⚠️ 이 파일의 HEX 는 활성 디자인 스타일(#1 crowny-class)에 등록된 것만 사용.
    부수 색(캔버스 셰이딩·파티클 등)은 여기 두지 말고 game.js 상수로. */
 :root {
@@ -257,7 +257,7 @@
 
 <!-- 메뉴 -->
 <div class="overlay" id="menu">
-  <h1 class="title">튕기기</h1>
+  <h1 class="title">튕글링</h1>
   <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.</p>
   <div class="best" id="menuBest">최고 도달 1판</div>
   <div class="stage-select hidden" id="stageSelect">
@@ -386,7 +386,7 @@
 
 <script>
 /* inlined from game.js */
-/* 튕기기 — 30판 정복 + 무한 마스터모드 + 상점/스킨/배경/막대기.
+/* 튕글링 — 30판 정복 + 무한 마스터모드 + 상점/스킨/배경/막대기.
    순수 JS + Canvas + Web Audio. 프레임워크/외부 라이브러리 0.
    상태: menu → playing → (paused / checkpoint) → gameover / win.
 
@@ -1909,7 +1909,7 @@
     const cleared = state === STATE.WIN || stage >= TOTAL_STAGES;
     c.textAlign = 'center'; c.fillStyle = '#FFFFFF';
     c.font = "800 64px " + COL_FONT;
-    c.fillText('튕기기', cw / 2, 180);
+    c.fillText('튕글링', cw / 2, 180);
     c.font = "500 28px " + COL_FONT; c.fillStyle = '#9CA3AF';
     c.fillText(masterMode ? '마스터모드' : (cleared ? '30판 정복!' : '30판 도전'), cw / 2, 230);
     c.font = "800 150px " + COL_FONT; c.fillStyle = COL.secondary;
@@ -1925,7 +1925,7 @@
     if (!blob) return;
     const file = new File([blob], 'pung-score.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: '튕기기', text: stage + '판 도달!' }); return; }
+      try { await navigator.share({ files: [file], title: '튕글링', text: stage + '판 도달!' }); return; }
       catch (e) { /* 폴백 */ }
     }
     const url = URL.createObjectURL(blob);
