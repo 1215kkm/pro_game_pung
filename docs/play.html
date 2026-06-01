@@ -220,8 +220,8 @@
   /* ===== 스틱 트레이 ===== */
   .stick-tray {
     position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 18px);
-    left: 0; right: 0; z-index: 6;
-    display: flex; flex-direction: row; align-items: center; justify-content: center; gap: var(--spacing-sm);
+    right: calc(env(safe-area-inset-right,0px) + 14px); z-index: 6;
+    display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: var(--spacing-sm);
   }
   .stick-tray.hidden { display: none; }
   .stick-icon {
@@ -229,9 +229,34 @@
     color: var(--text-primary); border-radius: var(--radius-md); cursor: pointer;
     min-height: 28px; height: 28px; width: 52px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; padding: 0;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
   .stick-icon.active { border-color: var(--secondary); background: var(--secondary); }
+  /* 무료 지급 시 멋지게 튀어오르는 등장 효과 */
+  .stick-icon.gift { animation: stickGift 0.7s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes stickGift {
+    0%   { transform: translateY(40px) scale(0.2); opacity: 0; box-shadow: 0 0 0 0 var(--secondary); }
+    55%  { transform: translateY(-8px) scale(1.35); opacity: 1; box-shadow: 0 0 22px 6px var(--secondary); }
+    100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+  }
   .stick-more { color: var(--text-secondary); font-weight: 700; }
+
+  /* 보유 공 빠른 전환 독 (좌측 하단) */
+  .skin-dock {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 18px);
+    left: calc(env(safe-area-inset-left,0px) + 14px); z-index: 6;
+    display: flex; flex-direction: row; align-items: center; gap: 6px;
+    max-width: 56vw; overflow-x: auto; scrollbar-width: none;
+  }
+  .skin-dock::-webkit-scrollbar { display: none; }
+  .skin-dock.hidden { display: none; }
+  .skin-chip {
+    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 999px; padding: 0; cursor: pointer;
+    border: 2px solid var(--dark-border); background: var(--dark-tertiary); overflow: hidden;
+    display: block; touch-action: manipulation; -webkit-tap-highlight-color: transparent; opacity: 0.7;
+  }
+  .skin-chip canvas { width: 100%; height: 100%; display: block; }
+  .skin-chip.active { border-color: var(--secondary); opacity: 1; transform: scale(1.12); }
 </style>
 </head>
 <body>
@@ -240,8 +265,11 @@
 <!-- 게임 중 좌상단 일시정지 -->
 <button class="corner-btn left hidden" id="pauseBtn" aria-label="일시정지">⏸</button>
 
-<!-- 스틱 트레이(게임 중) -->
+<!-- 스틱 트레이(게임 중, 우측 하단) -->
 <div class="stick-tray hidden" id="stickTray"></div>
+
+<!-- 보유 공 빠른 전환 독(게임 중, 좌측 하단) -->
+<div class="skin-dock hidden" id="skinDock"></div>
 
 <div id="hud" class="hidden" aria-hidden="true">
   <div class="stage-wrap">
@@ -472,6 +500,7 @@
   const elCpContinue = $('cpContinue');
   const elCpStop = $('cpStop');
   const elStickTray = $('stickTray');
+  const elSkinDock = $('skinDock');
 
   // ---------- 브랜드 색 (CSS 변수에서 읽음) ----------
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -938,6 +967,8 @@
   function bgById(id) { return BGS.find((b) => b.id === id) || BGS[0]; }
 
   const STICK_PRICE = 50;
+  const STICK_GIFT_EVERY = 10;    // 10판 깰 때마다 막대기 무료 지급(10·20·30…). 쉽게 바꿀 수 있게 상수로.
+  let stickGiftFlash = false;     // 이번 트레이 렌더에서 새 막대기를 튀어오르게 할지
 
   // ---------- Web Audio (효과음용) ----------
   let actx = null, masterGain = null;
@@ -1179,6 +1210,15 @@
     activeSticks = 0;
     renderStickTray();
   }
+  // 막대기 무료 지급(10판마다). 우측 하단 트레이에 새 아이콘이 튀어오르며 등장.
+  function giftStick(clearedStage) {
+    store.sticks += 1;
+    saveStore();
+    stickGiftFlash = true;
+    renderStickTray();
+    showToast('막대기 +1 무료! (' + clearedStage + '판 보너스)');
+    vibrate([20, 30, 60]);
+  }
 
   // ---------- 리사이즈 / 회전 ----------
   function resize() {
@@ -1262,6 +1302,7 @@
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
     renderStickTray();
+    renderSkinDock();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1273,6 +1314,7 @@
     elHud.setAttribute('aria-hidden', 'true');
     elPauseBtn.classList.add('hidden');
     elStickTray.classList.add('hidden');
+    elSkinDock.classList.add('hidden');
   }
 
   function gameOver() {
@@ -1325,6 +1367,7 @@
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
     renderStickTray();
+    renderSkinDock();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1530,6 +1573,8 @@
     // 판이 실제로 올랐다면(여러 판 점프 가능) — 가장 최근 클리어 판들 처리
     for (let s = prevStage; s < stage; s++) {
       const cleared = s;  // s판을 막 깬 것
+      // 10판마다 막대기 무료 지급(서비스). 체크포인트보다 먼저 줘서 효과가 보이게.
+      if (cleared % STICK_GIFT_EVERY === 0) giftStick(cleared);
       // 토스트(비차단)
       showToast(cleared + '판 클리어!');
       // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
@@ -1979,6 +2024,7 @@
     renderBgGrid();
     renderItemGrid();
     renderStickTray();
+    renderSkinDock();
   }
 
   // 카드 미리보기 캔버스
@@ -2413,16 +2459,47 @@
     elStickTray.innerHTML = '';
     // 가로 일렬 아이콘(최대 STICK_MAX_ICONS). 클릭 2개 이상 → 자동으로 하나의 긴 패들.
     const show = Math.min(STICK_MAX_ICONS, store.sticks);
+    const giftAt = stickGiftFlash ? show - 1 : -1; // 방금 받은 막대기 = 표시 중 마지막 아이콘
     for (let i = 0; i < show; i++) {
       const ic = document.createElement('button');
-      ic.className = 'stick-icon' + (i < activeSticks ? ' active' : '');
+      ic.className = 'stick-icon' + (i < activeSticks ? ' active' : '') + (i === giftAt ? ' gift' : '');
       ic.textContent = '▬';   // 가로 막대
       ic.addEventListener('click', () => { toggleStick(i); });
       elStickTray.appendChild(ic);
     }
     if (store.sticks > STICK_MAX_ICONS) {
-      const more = document.createElement('span'); more.className = 'stick-more'; more.textContent = '+' + (store.sticks - STICK_MAX_ICONS);
+      const more = document.createElement('span');
+      more.className = 'stick-more' + (stickGiftFlash ? ' gift' : '');
+      more.textContent = '+' + (store.sticks - STICK_MAX_ICONS);
       elStickTray.appendChild(more);
+    }
+    stickGiftFlash = false;
+  }
+
+  // ================= 보유 공 빠른 전환 독 (게임 중, 좌측 하단) =================
+  // 구매한 공 스킨을 작은 원형 칩으로 나열 → 탭하면 즉시 그 공으로 교체.
+  function renderSkinDock() {
+    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
+    const owned = SKINS.filter((s) => isOwned('skins', s.id));
+    if (!inPlay || owned.length <= 1) { elSkinDock.classList.add('hidden'); return; } // 1개뿐이면 숨김
+    elSkinDock.classList.remove('hidden');
+    elSkinDock.innerHTML = '';
+    for (const skin of owned) {
+      const chip = document.createElement('button');
+      chip.className = 'skin-chip' + (store.equipped.skin === skin.id ? ' active' : '');
+      const cv = document.createElement('canvas');
+      cv.width = 60; cv.height = 60;
+      const c = cv.getContext('2d');
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, 60, 60);
+      try { skin.draw(c, 30, 30, 24, 0.6); } catch (e) { /* 사진 미설정 등 — 플레이스홀더 그대로 */ }
+      chip.appendChild(cv);
+      chip.addEventListener('click', () => {
+        if (store.equipped.skin === skin.id) return;
+        equip('skin', skin.id);     // 즉시 교체(현재 떠 있는 공도 다음 프레임부터 새 스킨)
+        renderSkinDock();
+        vibrate(10);
+      });
+      elSkinDock.appendChild(chip);
     }
   }
 
