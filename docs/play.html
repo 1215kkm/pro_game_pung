@@ -282,21 +282,21 @@
     <div class="stage-label">PUNG</div>
   </div>
   <div class="substat">
-    <div class="stat"><span class="label">점수</span><span class="value" id="hudScore">0</span></div>
-    <div class="stat"><span class="label">콤보</span><span class="value" id="hudCombo">0</span></div>
-    <div class="stat"><span class="label">코인</span><span class="value" id="hudCoins">0</span></div>
-    <div class="stat"><span class="label">최고 도달</span><span class="value" id="hudBest">1</span></div>
-    <div class="stat"><span class="label">생명</span><span class="value" id="hudLives"></span></div>
+    <div class="stat"><span class="label" data-i18n="hudScore">점수</span><span class="value" id="hudScore">0</span></div>
+    <div class="stat"><span class="label" data-i18n="hudCombo">콤보</span><span class="value" id="hudCombo">0</span></div>
+    <div class="stat"><span class="label" data-i18n="hudCoins">코인</span><span class="value" id="hudCoins">0</span></div>
+    <div class="stat"><span class="label" data-i18n="hudBest">최고 도달</span><span class="value" id="hudBest">1</span></div>
+    <div class="stat"><span class="label" data-i18n="hudLives">생명</span><span class="value" id="hudLives"></span></div>
   </div>
 </div>
 
 <!-- 메뉴 -->
 <div class="overlay" id="menu">
-  <h1 class="title">튕글링</h1>
-  <p class="subtitle">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.</p>
+  <h1 class="title" data-i18n="brand">튕글링</h1>
+  <p class="subtitle" data-i18n="menuDesc">떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.</p>
   <div class="best" id="menuBest">최고 도달 1판</div>
   <div class="stage-select hidden" id="stageSelect">
-    <span class="ss-label">시작 판</span>
+    <span class="ss-label" data-i18n="startStageLabel">시작 판</span>
     <div class="ss-stepper">
       <button class="ss-btn" id="stageMinus" aria-label="시작 판 줄이기">−</button>
       <span class="ss-value" id="stageSelVal">1판</span>
@@ -304,119 +304,120 @@
     </div>
     <span class="ss-hint" id="stageSelHint">최고 도달 1판까지 선택</span>
   </div>
-  <button class="btn btn-primary" id="startBtn">게임 시작</button>
+  <button class="btn btn-primary" id="startBtn" data-i18n="start">게임 시작</button>
   <div class="toggles">
-    <button class="btn btn-ghost" id="shopBtn">상점</button>
+    <button class="btn btn-ghost" id="shopBtn" data-i18n="shop">상점</button>
     <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
-    <button class="btn btn-ghost" id="creditsBtn">크레딧</button>
+    <button class="btn btn-ghost" id="creditsBtn" data-i18n="credits">크레딧</button>
+    <button class="btn btn-ghost" id="langToggle">🇬🇧 English</button>
   </div>
 </div>
 
 <!-- 상점 -->
 <div class="overlay hidden" id="shop">
   <div class="shop-head">
-    <h2 class="title" style="font-size:var(--font-2xl)">상점</h2>
+    <h2 class="title" style="font-size:var(--font-2xl)" data-i18n="shop">상점</h2>
     <span class="shop-coins" id="shopCoins">0 🪙</span>
   </div>
   <div class="shop-tabs">
-    <button class="btn btn-ghost" id="tabBalls" aria-pressed="true">공 스킨</button>
-    <button class="btn btn-ghost" id="tabBgs" aria-pressed="false">배경</button>
-    <button class="btn btn-ghost" id="tabItems" aria-pressed="false">아이템</button>
+    <button class="btn btn-ghost" id="tabBalls" aria-pressed="true" data-i18n="tabBalls">공 스킨</button>
+    <button class="btn btn-ghost" id="tabBgs" aria-pressed="false" data-i18n="tabBgs">배경</button>
+    <button class="btn btn-ghost" id="tabItems" aria-pressed="false" data-i18n="tabItems">아이템</button>
   </div>
   <div class="shop-grid" id="gridBalls"></div>
   <div class="shop-grid hidden" id="gridBgs"></div>
   <div class="shop-grid hidden" id="gridItems"></div>
-  <button class="btn btn-primary" id="shopBack">닫기</button>
+  <button class="btn btn-primary" id="shopBack" data-i18n="close">닫기</button>
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
   <input type="file" id="photoBallInput" accept="image/*" style="display:none" />
 </div>
 
 <!-- 일시정지 -->
 <div class="overlay hidden" id="pause">
-  <h2 class="title" style="font-size:var(--font-2xl)">일시정지</h2>
+  <h2 class="title" style="font-size:var(--font-2xl)" data-i18n="paused">일시정지</h2>
   <div class="gameover-row">
-    <button class="btn btn-primary" id="pauseResume">이어하기</button>
-    <button class="btn btn-ghost" id="pauseShopBtn">상점</button>
-    <button class="btn btn-ghost" id="pauseMenu">메뉴</button>
+    <button class="btn btn-primary" id="pauseResume" data-i18n="resume">이어하기</button>
+    <button class="btn btn-ghost" id="pauseShopBtn" data-i18n="shop">상점</button>
+    <button class="btn btn-ghost" id="pauseMenu" data-i18n="menu">메뉴</button>
   </div>
 </div>
 
 <!-- 체크포인트(3판마다) -->
 <div class="overlay hidden" id="checkpoint">
-  <div class="rest-badge">쉬는시간</div>
+  <div class="rest-badge" data-i18n="restTime">쉬는시간</div>
   <h2 class="clear-title" id="cpTitle">3판 클리어!</h2>
-  <p class="subtitle">계속 도전할까요?</p>
+  <p class="subtitle" data-i18n="keepGoingQ">계속 도전할까요?</p>
   <div class="gameover-row">
-    <button class="btn btn-primary" id="cpContinue">계속 도전</button>
-    <button class="btn btn-ghost" id="cpStop">그만하기</button>
+    <button class="btn btn-primary" id="cpContinue" data-i18n="keepGoing">계속 도전</button>
+    <button class="btn btn-ghost" id="cpStop" data-i18n="stop">그만하기</button>
   </div>
 </div>
 
 <!-- 게임오버 -->
 <div class="overlay hidden" id="gameover">
-  <div id="newRecordBadge" class="new-record hidden">최고 기록!</div>
-  <div class="score-final"><span id="finalScore">1</span><span class="unit"> 판 도달</span></div>
+  <div id="newRecordBadge" class="new-record hidden" data-i18n="newRecord">최고 기록!</div>
+  <div class="score-final"><span id="finalScore">1</span><span class="unit" data-i18n="reachedUnit"> 판 도달</span></div>
   <div class="best" id="goScore" style="color:var(--secondary)">점수 0</div>
   <div class="best" id="goBest">최고 도달 1판</div>
   <div class="gameover-row">
-    <button class="btn btn-primary" id="retryBtn">처음부터(1판)</button>
+    <button class="btn btn-primary" id="retryBtn" data-i18n="restart1">처음부터(1판)</button>
     <button class="btn btn-primary hidden" id="resumeBtn">N판부터 계속</button>
-    <button class="btn btn-ghost" id="shareBtn">결과 공유</button>
-    <button class="btn btn-ghost" id="menuBtn">메뉴</button>
+    <button class="btn btn-ghost" id="shareBtn" data-i18n="share">결과 공유</button>
+    <button class="btn btn-ghost" id="menuBtn" data-i18n="menu">메뉴</button>
   </div>
 </div>
 
 <!-- 클리어(승리) -->
 <div class="overlay hidden" id="winScreen">
-  <h1 class="clear-title">CLEAR!<br>30판 정복</h1>
-  <div class="clear-sub" id="winSub">완벽한 마스터</div>
-  <p class="subtitle">최대 콤보 <span id="winCombo">0</span> — 멈추지 않고 마스터모드로 계속 도전할 수 있어요.</p>
+  <h1 class="clear-title" data-i18n-html="winTitle">CLEAR!<br>30판 정복</h1>
+  <div class="clear-sub" id="winSub" data-i18n="winSub">완벽한 마스터</div>
+  <p class="subtitle"><span data-i18n="winMsgPre">최대 콤보 </span><span id="winCombo">0</span><span data-i18n="winMsgPost"> — 멈추지 않고 마스터모드로 계속 도전할 수 있어요.</span></p>
   <div class="gameover-row">
-    <button class="btn btn-primary" id="winMasterBtn">마스터모드 계속하기</button>
-    <button class="btn btn-ghost" id="winRetryBtn">다시 도전</button>
-    <button class="btn btn-ghost" id="winShareBtn">결과 공유</button>
-    <button class="btn btn-ghost" id="winMenuBtn">메뉴</button>
+    <button class="btn btn-primary" id="winMasterBtn" data-i18n="continueMaster">마스터모드 계속하기</button>
+    <button class="btn btn-ghost" id="winRetryBtn" data-i18n="tryAgain">다시 도전</button>
+    <button class="btn btn-ghost" id="winShareBtn" data-i18n="share">결과 공유</button>
+    <button class="btn btn-ghost" id="winMenuBtn" data-i18n="menu">메뉴</button>
   </div>
 </div>
 
 <!-- 크레딧(출처 표시) -->
 <div class="overlay hidden" id="credits">
-  <h2 class="title" style="font-size:var(--font-2xl)">크레딧</h2>
+  <h2 class="title" style="font-size:var(--font-2xl)" data-i18n="credits">크레딧</h2>
   <div class="credits-list">
-    <p class="credits-head">배경 음악 — <a href="https://opengameart.org" target="_blank" rel="noopener">OpenGameArt.org</a> · 라이선스 CC&#8209;BY&nbsp;3.0</p>
+    <p class="credits-head" data-i18n-html="creditsHead">배경 음악 — <a href="https://opengameart.org" target="_blank" rel="noopener">OpenGameArt.org</a> · 라이선스 CC&#8209;BY&nbsp;3.0</p>
     <div class="credits-item">
       <span class="credits-title">Fun Adventure</span>
       <span class="credits-by">by Hitctrl</span>
-      <a class="credits-link" href="https://opengameart.org/content/fun-adventure" target="_blank" rel="noopener">출처</a>
+      <a class="credits-link" href="https://opengameart.org/content/fun-adventure" target="_blank" rel="noopener" data-i18n="source">출처</a>
     </div>
     <div class="credits-item">
       <span class="credits-title">Fun BGM</span>
       <span class="credits-by">by syncopika</span>
-      <a class="credits-link" href="https://opengameart.org/content/fun-bgm" target="_blank" rel="noopener">출처</a>
+      <a class="credits-link" href="https://opengameart.org/content/fun-bgm" target="_blank" rel="noopener" data-i18n="source">출처</a>
     </div>
     <div class="credits-item">
       <span class="credits-title">Selections from BGM Fun Vol.7</span>
       <span class="credits-by">by syncopika</span>
-      <a class="credits-link" href="https://opengameart.org/content/selections-from-bgm-fun-vol7" target="_blank" rel="noopener">출처</a>
+      <a class="credits-link" href="https://opengameart.org/content/selections-from-bgm-fun-vol7" target="_blank" rel="noopener" data-i18n="source">출처</a>
     </div>
-    <p class="credits-note">CC&#8209;BY&nbsp;3.0 — 상업적 사용 가능, 저작자 표시 필수.<br>저작권/표시: Hitctrl, syncopika.</p>
+    <p class="credits-note" data-i18n-html="creditsNote">CC&#8209;BY&nbsp;3.0 — 상업적 사용 가능, 저작자 표시 필수.<br>저작권/표시: Hitctrl, syncopika.</p>
   </div>
-  <button class="btn btn-primary" id="creditsBack">닫기</button>
+  <button class="btn btn-primary" id="creditsBack" data-i18n="close">닫기</button>
 </div>
 
 <!-- 사진 크롭 편집기 -->
 <div class="overlay hidden" id="cropEditor">
-  <h2 class="title" style="font-size:var(--font-2xl)">사진 맞추기</h2>
-  <p class="subtitle">드래그로 이동 · 두 손가락(또는 아래 슬라이더)으로 확대/축소해 보여질 부분을 고르세요.</p>
+  <h2 class="title" style="font-size:var(--font-2xl)" data-i18n="fitPhoto">사진 맞추기</h2>
+  <p class="subtitle" data-i18n="fitPhotoDesc">드래그로 이동 · 두 손가락(또는 아래 슬라이더)으로 확대/축소해 보여질 부분을 고르세요.</p>
   <canvas id="cropCanvas" class="crop-canvas"></canvas>
   <div class="crop-style hidden" id="cropStyleRow">
-    <button class="btn btn-ghost" id="cropFlat" aria-pressed="true">자르기</button>
-    <button class="btn btn-ghost" id="cropConvex" aria-pressed="false">볼록 3D</button>
+    <button class="btn btn-ghost" id="cropFlat" aria-pressed="true" data-i18n="crop">자르기</button>
+    <button class="btn btn-ghost" id="cropConvex" aria-pressed="false" data-i18n="convex3d">볼록 3D</button>
   </div>
   <input type="range" id="cropZoom" class="crop-zoom" min="0" max="1" step="0.001" value="0" aria-label="확대/축소" />
   <div class="gameover-row">
-    <button class="btn btn-primary" id="cropApply">적용</button>
-    <button class="btn btn-ghost" id="cropCancel">취소</button>
+    <button class="btn btn-primary" id="cropApply" data-i18n="apply">적용</button>
+    <button class="btn btn-ghost" id="cropCancel" data-i18n="cancel">취소</button>
   </div>
 </div>
 
@@ -438,6 +439,210 @@
 (function () {
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
+
+  // ---------- i18n ----------
+  let lang = 'ko';
+  try { const _l = localStorage.getItem('pung_lang'); if (_l === 'en' || _l === 'ko') lang = _l; } catch (e) { /* 무시 */ }
+  const I18N = {
+    ko: {
+      title: '튕글링 — 30판 정복',
+      brand: '튕글링',
+      menuDesc: '떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.',
+      start: '게임 시작',
+      shop: '상점',
+      credits: '크레딧',
+      close: '닫기',
+      soundOn: '소리 켜짐',
+      soundOff: '소리 꺼짐',
+      langSwitch: '🇬🇧 English',
+      startStageLabel: '시작 판',
+      paused: '일시정지',
+      resume: '이어하기',
+      menu: '메뉴',
+      keepGoingQ: '계속 도전할까요?',
+      keepGoing: '계속 도전',
+      stop: '그만하기',
+      restTime: '쉬는시간',
+      newRecord: '최고 기록!',
+      restart1: '처음부터(1판)',
+      share: '결과 공유',
+      winTitle: 'CLEAR!<br>30판 정복',
+      winSub: '완벽한 마스터',
+      continueMaster: '마스터모드 계속하기',
+      tryAgain: '다시 도전',
+      tabBalls: '공 스킨',
+      tabBgs: '배경',
+      tabItems: '아이템',
+      hudScore: '점수',
+      hudCombo: '콤보',
+      hudCoins: '코인',
+      hudBest: '최고 도달',
+      hudLives: '생명',
+      fitPhoto: '사진 맞추기',
+      fitPhotoDesc: '드래그로 이동 · 두 손가락(또는 아래 슬라이더)으로 확대/축소해 보여질 부분을 고르세요.',
+      crop: '자르기',
+      convex3d: '볼록 3D',
+      apply: '적용',
+      cancel: '취소',
+      source: '출처',
+      creditsHead: '배경 음악 — <a href="https://opengameart.org" target="_blank" rel="noopener">OpenGameArt.org</a> · 라이선스 CC&#8209;BY&nbsp;3.0',
+      creditsNote: 'CC&#8209;BY&nbsp;3.0 — 상업적 사용 가능, 저작자 표시 필수.<br>저작권/표시: Hitctrl, syncopika.',
+      addPhoto: '사진 추가',
+      equipped: '장착됨',
+      equip: '장착',
+      notEnoughCoins: '코인이 부족해요',
+      applied: '적용됨',
+      choosePhoto: '사진 선택',
+      photoReadFail: '사진을 읽지 못했어요',
+      photoTooBig: '사진 용량 초과 — 더 작은 사진을',
+      photoReadyBg: '사진 준비됨 — 적용을 눌러 배경 적용',
+      ballPhotoApplied: '공 사진 적용됨',
+      masterMode: '마스터모드',
+      cleared30: '30판 정복!',
+      challenge30: '30판 도전',
+      winMsgPre: '최대 콤보 ',
+      winMsgPost: ' — 멈추지 않고 마스터모드로 계속 도전할 수 있어요.',
+      reachedUnit: ' 판 도달',
+      skin_default: '기본 굴절공',
+      skin_soccer: '축구공',
+      skin_basket: '농구공',
+      skin_jupiter: '목성',
+      skin_saturn: '토성',
+      skin_penguin: '펭귄',
+      skin_photo: '내 사진',
+      bg_default: '기본 다크',
+      bg_sunset: '노을',
+      bg_space: '우주',
+      bg_photo: '내 사진',
+      reachedN: (a) => '최고 도달 ' + a.n + '판',
+      masterReachedN: (a) => '마스터 도달 ' + a.n + '판',
+      scoreBest: (a) => '점수 ' + a.s + ' (최고 ' + a.b + ')',
+      resumeFromN: (a) => a.n + '판부터 계속',
+      stageN: (a) => a.n + '판',
+      selectUpToN: (a) => '최고 도달 ' + a.n + '판까지 선택',
+      stageClearedN: (a) => a.n + '판 클리어!',
+      ofTotal: ' / 30판',
+      masterTag: ' MASTER',
+      coinsGained: (a) => '+' + a.n + ' 코인! 🪙',
+      stickGiftN: (a) => '막대기 +1 무료! (' + a.n + '판 보너스)',
+      reachedStageN: (a) => a.n + '판 도달',
+      maxComboN: (a) => '최대 콤보 ' + a.n,
+      reachedStageNbang: (a) => a.n + '판 도달!',
+      applyPrice: (a) => '적용 (' + a.p + ' 🪙)',
+      stickOwnedN: (a) => '막대기 (보유 ' + a.n + ')',
+      stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + a.max + '개까지 보입니다.'
+    },
+    en: {
+      title: 'Tunggling — Conquer 30',
+      brand: 'Tunggling',
+      menuDesc: 'Touch the falling ball in the lower zone to bounce it up. Each catch advances a stage — conquer all 30! Stage 1 is very slow, and it speeds up as you climb. Every 5 stages adds another ball; well-bounced balls ripen and pop into coins. Spend coins in the shop on skins, backgrounds and sticks.',
+      start: 'Start',
+      shop: 'Shop',
+      credits: 'Credits',
+      close: 'Close',
+      soundOn: 'Sound on',
+      soundOff: 'Sound off',
+      langSwitch: '🇰🇷 한국어',
+      startStageLabel: 'Start stage',
+      paused: 'Paused',
+      resume: 'Resume',
+      menu: 'Menu',
+      keepGoingQ: 'Keep going?',
+      keepGoing: 'Keep going',
+      stop: 'Stop',
+      restTime: 'REST',
+      newRecord: 'New record!',
+      restart1: 'Restart (stage 1)',
+      share: 'Share',
+      winTitle: 'CLEAR!<br>30 stages',
+      winSub: 'Perfect master',
+      continueMaster: 'Continue master mode',
+      tryAgain: 'Try again',
+      tabBalls: 'Balls',
+      tabBgs: 'Backgrounds',
+      tabItems: 'Items',
+      hudScore: 'Score',
+      hudCombo: 'Combo',
+      hudCoins: 'Coins',
+      hudBest: 'Best',
+      hudLives: 'Lives',
+      fitPhoto: 'Fit photo',
+      fitPhotoDesc: 'Drag to move · pinch (or the slider below) to zoom and pick the visible area.',
+      crop: 'Crop',
+      convex3d: '3D Convex',
+      apply: 'Apply',
+      cancel: 'Cancel',
+      source: 'Source',
+      creditsHead: 'Background music — <a href="https://opengameart.org" target="_blank" rel="noopener">OpenGameArt.org</a> · License CC&#8209;BY&nbsp;3.0',
+      creditsNote: 'CC&#8209;BY&nbsp;3.0 — commercial use allowed, attribution required.<br>Copyright/credit: Hitctrl, syncopika.',
+      addPhoto: 'Add photo',
+      equipped: 'Equipped',
+      equip: 'Equip',
+      notEnoughCoins: 'Not enough coins',
+      applied: 'Applied',
+      choosePhoto: 'Choose photo',
+      photoReadFail: "Couldn't read the photo",
+      photoTooBig: 'Photo too large — try a smaller one',
+      photoReadyBg: 'Photo ready — tap Apply to set background',
+      ballPhotoApplied: 'Ball photo applied',
+      masterMode: 'Master mode',
+      cleared30: 'Cleared 30 stages!',
+      challenge30: '30-stage challenge',
+      winMsgPre: 'Max combo ',
+      winMsgPost: ' — keep going in master mode.',
+      reachedUnit: ' reached',
+      skin_default: 'Refraction',
+      skin_soccer: 'Soccer ball',
+      skin_basket: 'Basketball',
+      skin_jupiter: 'Jupiter',
+      skin_saturn: 'Saturn',
+      skin_penguin: 'Penguin',
+      skin_photo: 'My photo',
+      bg_default: 'Dark',
+      bg_sunset: 'Sunset',
+      bg_space: 'Space',
+      bg_photo: 'My photo',
+      reachedN: (a) => 'Best: stage ' + a.n,
+      masterReachedN: (a) => 'Master: stage ' + a.n,
+      scoreBest: (a) => 'Score ' + a.s + ' (best ' + a.b + ')',
+      resumeFromN: (a) => 'Continue from stage ' + a.n,
+      stageN: (a) => 'Stage ' + a.n,
+      selectUpToN: (a) => 'Pick up to stage ' + a.n,
+      stageClearedN: (a) => 'Stage ' + a.n + ' clear!',
+      ofTotal: ' / 30',
+      masterTag: ' MASTER',
+      coinsGained: (a) => '+' + a.n + ' coins! 🪙',
+      stickGiftN: (a) => 'Stick +1 free! (stage ' + a.n + ' bonus)',
+      reachedStageN: (a) => 'Reached stage ' + a.n,
+      maxComboN: (a) => 'Max combo ' + a.n,
+      reachedStageNbang: (a) => 'Reached stage ' + a.n + '!',
+      applyPrice: (a) => 'Apply (' + a.p + ' 🪙)',
+      stickOwnedN: (a) => 'Stick (own ' + a.n + ')',
+      stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). Turn on icons in the bottom tray; turn on 2 or more and they merge into one long paddle. Each stick disappears after 3 catches. The tray shows up to ' + a.max + ' icons.'
+    }
+  };
+  function t(key, a) { const tbl = I18N[lang] || I18N.ko; let d = tbl[key]; if (d == null) d = I18N.ko[key]; if (d == null) return key; return (typeof d === 'function') ? d(a) : d; }
+  function applyStaticI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+    document.documentElement.lang = lang;
+    try { document.title = t('title'); } catch (e) { /* 무시 */ }
+  }
+  function refreshDynamicI18n() {
+    try { if (typeof updateHud === 'function') updateHud(); } catch (e) { /* 무시 */ }
+    try { if (typeof updateStageSelect === 'function') updateStageSelect(); } catch (e) { /* 무시 */ }
+    try { if (typeof refreshToggleLabels === 'function') refreshToggleLabels(); } catch (e) { /* 무시 */ }
+    try { if (elMenuBest) elMenuBest.textContent = (typeof masterMode !== 'undefined' && masterMode) ? t('masterReachedN', { n: best }) : t('reachedN', { n: best }); } catch (e) { /* 무시 */ }
+    try { var lt = $('langToggle'); if (lt) lt.textContent = t('langSwitch'); } catch (e) { /* 무시 */ }
+    try { if (elShop && !elShop.classList.contains('hidden') && typeof renderShop === 'function') renderShop(); } catch (e) { /* 무시 */ }
+  }
+  function setLang(l) {
+    lang = (l === 'en') ? 'en' : 'ko';
+    try { localStorage.setItem('pung_lang', lang); } catch (e) { /* 무시 */ }
+    applyStaticI18n();
+    refreshDynamicI18n();
+  }
+
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
   const elHud = $('hud');
@@ -908,18 +1113,18 @@
       c.fillStyle = '#9CA3AF';
       c.font = '600 ' + Math.round(r * 0.3) + 'px ' + COL_FONT;
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText('사진 추가', x, y);
+      c.fillText(t('addPhoto'), x, y);
     }
   }
 
   const SKINS = [
-    { id: 'default', name: '기본 굴절공', price: 0, draw: drawDefaultSkin },
-    { id: 'soccer', name: '축구공', price: 30, draw: drawSoccerSkin },
-    { id: 'basket', name: '농구공', price: 30, draw: drawBasketSkin },
-    { id: 'jupiter', name: '목성', price: 60, draw: drawJupiterSkin },
-    { id: 'saturn', name: '토성', price: 80, draw: drawSaturnSkin },
-    { id: 'penguin', name: '펭귄', price: 100, draw: drawPenguinSkin },
-    { id: 'photoBall', name: '내 사진', price: 120, draw: drawSkin_photoBall },
+    { id: 'default', name: '기본 굴절공', nameKey: 'skin_default', price: 0, draw: drawDefaultSkin },
+    { id: 'soccer', name: '축구공', nameKey: 'skin_soccer', price: 30, draw: drawSoccerSkin },
+    { id: 'basket', name: '농구공', nameKey: 'skin_basket', price: 30, draw: drawBasketSkin },
+    { id: 'jupiter', name: '목성', nameKey: 'skin_jupiter', price: 60, draw: drawJupiterSkin },
+    { id: 'saturn', name: '토성', nameKey: 'skin_saturn', price: 80, draw: drawSaturnSkin },
+    { id: 'penguin', name: '펭귄', nameKey: 'skin_penguin', price: 100, draw: drawPenguinSkin },
+    { id: 'photoBall', name: '내 사진', nameKey: 'skin_photo', price: 120, draw: drawSkin_photoBall },
   ];
   function skinById(id) { return SKINS.find((s) => s.id === id) || SKINS[0]; }
 
@@ -968,10 +1173,10 @@
     }
   }
   const BGS = [
-    { id: 'default', name: '기본 다크', price: 0, render: bgDefault },
-    { id: 'sunset', name: '노을', price: 40, render: bgSunset },
-    { id: 'space', name: '우주', price: 40, render: bgSpace },
-    { id: 'photo', name: '내 사진', price: 150, render: bgPhoto },
+    { id: 'default', name: '기본 다크', nameKey: 'bg_default', price: 0, render: bgDefault },
+    { id: 'sunset', name: '노을', nameKey: 'bg_sunset', price: 40, render: bgSunset },
+    { id: 'space', name: '우주', nameKey: 'bg_space', price: 40, render: bgSpace },
+    { id: 'photo', name: '내 사진', nameKey: 'bg_photo', price: 150, render: bgPhoto },
   ];
   function bgById(id) { return BGS.find((b) => b.id === id) || BGS[0]; }
 
@@ -1225,7 +1430,7 @@
     saveStore();
     stickGiftFlash = true;
     renderStickTray();
-    showToast('막대기 +1 무료! (' + clearedStage + '판 보너스)');
+    showToast(t('stickGiftN', { n: clearedStage }));
     vibrate([20, 30, 60]);
   }
 
@@ -1337,11 +1542,11 @@
     saveResumeStage();
     recordBestScore();
     elFinalScore.textContent = stage;
-    if (elGoScore) elGoScore.textContent = '점수 ' + score + ' (최고 ' + bestScore + ')';
-    elGoBest.textContent = (masterMode ? '마스터 도달 ' : '최고 도달 ') + best + '판';
+    if (elGoScore) elGoScore.textContent = t('scoreBest', { s: score, b: bestScore });
+    elGoBest.textContent = masterMode ? t('masterReachedN', { n: best }) : t('reachedN', { n: best });
     // 이어하기 버튼: N>1 일 때만 노출
     if (elResume) {
-      if (resumeStage > 1) { elResume.textContent = resumeStage + '판부터 계속'; elResume.classList.remove('hidden'); }
+      if (resumeStage > 1) { elResume.textContent = t('resumeFromN', { n: resumeStage }); elResume.classList.remove('hidden'); }
       else elResume.classList.add('hidden');
     }
     hidePlayChrome();
@@ -1394,7 +1599,7 @@
     elCredits.classList.add('hidden');
     hidePlayChrome();
     elMenu.classList.remove('hidden');
-    elMenuBest.textContent = '최고 도달 ' + best + '판';
+    elMenuBest.textContent = masterMode ? t('masterReachedN', { n: best }) : t('reachedN', { n: best });
     updateStageSelect();
   }
 
@@ -1403,8 +1608,8 @@
     startStage = Math.max(1, Math.min(best, startStage));
     if (best <= 1) { elStageSelect.classList.add('hidden'); return; }
     elStageSelect.classList.remove('hidden');
-    elStageSelVal.textContent = startStage + '판';
-    elStageSelHint.textContent = '최고 도달 ' + best + '판까지 선택';
+    elStageSelVal.textContent = t('stageN', { n: startStage });
+    elStageSelHint.textContent = t('selectUpToN', { n: best });
     elStageMinus.disabled = startStage <= 1;
     elStagePlus.disabled = startStage >= best;
   }
@@ -1414,7 +1619,7 @@
     state = STATE.CHECKPOINT;
     stopMusic();
     playWin(); // 3판마다 성공 효과음 (Win sound.wav)
-    elCpTitle.textContent = clearedStage + '판 클리어!';
+    elCpTitle.textContent = t('stageClearedN', { n: clearedStage });
     elCheckpoint.classList.remove('hidden');
   }
   function resumeFromCheckpoint() {
@@ -1445,7 +1650,7 @@
     elHudCombo.textContent = combo;
     if (elHudCoins) elHudCoins.textContent = getCoins();
     elHudBest.textContent = best;
-    if (elHudOf) elHudOf.textContent = masterMode ? ' MASTER' : ' / 30판';
+    if (elHudOf) elHudOf.textContent = masterMode ? t('masterTag') : t('ofTotal');
     if (elHudLives) {
       const n = Math.max(0, lives | 0);
       elHudLives.textContent = '♥'.repeat(Math.min(n, LIVES_MAX)) + '♡'.repeat(Math.max(0, LIVES_MAX - n));
@@ -1476,7 +1681,7 @@
     const gain = 1 + Math.floor(stage / 3) + (masterMode ? Math.max(0, stage - TOTAL_STAGES) : 0);
     addCoins(gain);
     popsThisRun += 1;
-    if (popsThisRun % 5 === 0) showToast('+' + gain + ' 코인! 🪙');
+    if (popsThisRun % 5 === 0) showToast(t('coinsGained', { n: gain }));
   }
 
   // 큰 버스트 파티클(스킨색→흰색) + 링 충격파
@@ -1604,7 +1809,7 @@
       // 10판마다 막대기 무료 지급(서비스). 체크포인트보다 먼저 줘서 효과가 보이게.
       if (cleared % STICK_GIFT_EVERY === 0) giftStick(cleared);
       // 토스트(비차단)
-      showToast(cleared + '판 클리어!');
+      showToast(t('stageClearedN', { n: cleared }));
       // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
       if (cleared % 3 === 0) { enterCheckpoint(cleared); return; }
     }
@@ -2032,23 +2237,23 @@
     const cleared = state === STATE.WIN || stage >= TOTAL_STAGES;
     c.textAlign = 'center'; c.fillStyle = '#FFFFFF';
     c.font = "800 64px " + COL_FONT;
-    c.fillText('튕글링', cw / 2, 180);
+    c.fillText(t('brand'), cw / 2, 180);
     c.font = "500 28px " + COL_FONT; c.fillStyle = '#9CA3AF';
-    c.fillText(masterMode ? '마스터모드' : (cleared ? '30판 정복!' : '30판 도전'), cw / 2, 230);
+    c.fillText(masterMode ? t('masterMode') : (cleared ? t('cleared30') : t('challenge30')), cw / 2, 230);
     c.font = "800 150px " + COL_FONT; c.fillStyle = COL.secondary;
     c.fillText(String(stage), cw / 2, 460);
     c.font = "500 32px " + COL_FONT; c.fillStyle = '#FFFFFF';
-    c.fillText('판 도달', cw / 2, 525);
+    c.fillText(t('reachedUnit').trim(), cw / 2, 525);
     c.font = "700 30px " + COL_FONT; c.fillStyle = '#FFFFFF';
-    c.fillText('최고 도달 ' + best + '판', cw / 2, 620);
+    c.fillText(t('reachedN', { n: best }), cw / 2, 620);
     c.font = "600 26px " + COL_FONT; c.fillStyle = '#9CA3AF';
-    c.fillText('최대 콤보 ' + maxCombo, cw / 2, 670);
+    c.fillText(t('maxComboN', { n: maxCombo }), cw / 2, 670);
 
     const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
     if (!blob) return;
     const file = new File([blob], 'pung-score.png', { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: '튕글링', text: stage + '판 도달!' }); return; }
+      try { await navigator.share({ files: [file], title: t('brand'), text: t('reachedStageNbang', { n: stage }) }); return; }
       catch (e) { /* 폴백 */ }
     }
     const url = URL.createObjectURL(blob);
@@ -2122,8 +2327,8 @@
     const btn = document.createElement('button');
     btn.className = 'btn ' + (equipped ? 'btn-ghost' : 'btn-primary');
     btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
-    if (equipped) { btn.textContent = '장착됨'; btn.disabled = true; }
-    else if (owned) { btn.textContent = '장착'; }
+    if (equipped) { btn.textContent = t('equipped'); btn.disabled = true; }
+    else if (owned) { btn.textContent = t('equip'); }
     else { btn.textContent = price + ' 🪙'; }
     btn.addEventListener('click', onAction);
     card.appendChild(btn);
@@ -2139,11 +2344,11 @@
         c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
         skin.draw(c, cw / 2, ch / 2, cw * 0.36, 0.6);
       });
-      const card = buildCard(prev, skin.name, owned, equipped, skin.price, () => {
+      const card = buildCard(prev, t(skin.nameKey), owned, equipped, skin.price, () => {
         if (skin.id === 'photoBall') {
           // 사진 공: 소유 전이면 구매 후, 사진 없으면 파일 선택부터
           if (!owned) {
-            if (!buy('skins', skin.id, skin.price)) { showShopMsg('코인이 부족해요'); return; }
+            if (!buy('skins', skin.id, skin.price)) { showShopMsg(t('notEnoughCoins')); return; }
             equip('skin', skin.id);
             if (!store.photoBall) { elPhotoBallInput.click(); renderShop(); return; }
           } else if (!store.photoBall) {
@@ -2160,7 +2365,7 @@
         }
         if (equipped) return;
         if (owned) { equip('skin', skin.id); }
-        else { if (!buy('skins', skin.id, skin.price)) { showShopMsg('코인이 부족해요'); return; } equip('skin', skin.id); }
+        else { if (!buy('skins', skin.id, skin.price)) { showShopMsg(t('notEnoughCoins')); return; } equip('skin', skin.id); }
         renderShop();
       });
       elGridBalls.appendChild(card);
@@ -2178,18 +2383,18 @@
         // 배경 미리보기: 임시 W/H 컨텍스트 흉내 (render는 전역 W/H 사용하므로 직접 미니 렌더)
         miniBgPreview(c, bg.id, cw, ch);
       });
-      const card = buildBgCard(prev, bg.name, equipped, free, bg.price, () => {
+      const card = buildBgCard(prev, t(bg.nameKey), equipped, free, bg.price, () => {
         if (equipped) return;
         if (bg.id === 'photo') {
           // 사진이 없으면 먼저 무료 업로드(적용은 사진 선택 후 다시 눌러 차감)
           if (!store.photo) { elPhotoInput.click(); return; }
-          if (!spend(bg.price)) { showShopMsg('코인이 부족해요'); return; }
+          if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; }
           store.equipped.bg = 'photo'; saveStore();
         } else if (free) {
           // 기본 다크: 무료로 되돌리기
           store.equipped.bg = bg.id; saveStore();
         } else {
-          if (!spend(bg.price)) { showShopMsg('코인이 부족해요'); return; }
+          if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; }
           store.equipped.bg = bg.id; saveStore();
         }
         renderShop();
@@ -2209,11 +2414,11 @@
     btn.className = 'btn ' + (equipped ? 'btn-ghost' : 'btn-primary');
     btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
     if (equipped) {
-      btn.textContent = '적용됨'; btn.disabled = true;
+      btn.textContent = t('applied'); btn.disabled = true;
     } else if (free) {
-      btn.textContent = '적용';
+      btn.textContent = t('apply');
     } else {
-      btn.textContent = '적용 (' + price + ' 🪙)';
+      btn.textContent = t('applyPrice', { p: price });
       if (getCoins() < price) { btn.disabled = true; btn.classList.add('btn-disabled'); }
     }
     btn.addEventListener('click', onAction);
@@ -2239,7 +2444,7 @@
       } else {
         c.fillStyle = '#2B2D35'; c.fillRect(0, 0, cw, ch);
         c.fillStyle = '#9CA3AF'; c.font = '600 13px ' + COL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText('사진 선택', cw / 2, ch / 2);
+        c.fillText(t('choosePhoto'), cw / 2, ch / 2);
       }
     }
   }
@@ -2258,7 +2463,7 @@
     card.className = 'shop-card';
     card.appendChild(prev);
     const nm = document.createElement('div'); nm.className = 'shop-name';
-    nm.textContent = '막대기 (보유 ' + store.sticks + ')';
+    nm.textContent = t('stickOwnedN', { n: store.sticks });
     card.appendChild(nm);
     // 수량 구매 버튼 3개: +1 / +3 / +5 (각각 가격*수량 spend)
     const btnRow = document.createElement('div');
@@ -2271,7 +2476,7 @@
       btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
       if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
       btn.addEventListener('click', () => {
-        if (!spend(cost)) { showShopMsg('코인이 부족해요'); return; }
+        if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
         store.sticks += qty; saveStore();
         renderShop();
       });
@@ -2283,7 +2488,7 @@
     // 안내
     const info = document.createElement('div');
     info.className = 'shop-info';
-    info.textContent = '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + STICK_PRICE + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + STICK_MAX_ICONS + '개까지 보입니다.';
+    info.textContent = t('stickInfo', { price: STICK_PRICE, max: STICK_MAX_ICONS });
     elGridItems.appendChild(info);
   }
 
@@ -2446,7 +2651,7 @@
     const cv = cropShape === 'circle' ? buildBallCanvas(512, cropStyle === 'convex') : buildRectCanvas();
     let dataUrl;
     try { dataUrl = cv.toDataURL('image/jpeg', cropShape === 'circle' ? 0.85 : 0.7); }
-    catch (err) { showShopMsg('사진을 읽지 못했어요'); cropHide(); return; }
+    catch (err) { showShopMsg(t('photoReadFail')); cropHide(); return; }
     const cb = cropApplyCb;
     cropHide();
     cb(dataUrl);
@@ -2497,7 +2702,7 @@
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => cropOpen(img, shape, aspect, onCropped);
-      img.onerror = () => showShopMsg('사진을 읽지 못했어요');
+      img.onerror = () => showShopMsg(t('photoReadFail'));
       img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
@@ -2508,8 +2713,8 @@
     loadFileToEditor(e, 'rect', W / H, (dataUrl) => {
       store.photo = dataUrl;
       saveStore();
-      if (!store.photo) { showShopMsg('사진 용량 초과 — 더 작은 사진을'); }
-      else { showShopMsg('사진 준비됨 — 적용을 눌러 배경 적용'); }
+      if (!store.photo) { showShopMsg(t('photoTooBig')); }
+      else { showShopMsg(t('photoReadyBg')); }
       loadPhotoImage();
       renderShop();
     });
@@ -2520,8 +2725,8 @@
     loadFileToEditor(e, 'circle', 1, (dataUrl) => {
       store.photoBall = dataUrl;
       saveStore();
-      if (!store.photoBall) { showShopMsg('사진 용량 초과 — 더 작은 사진을'); }
-      else { showShopMsg('공 사진 적용됨'); }
+      if (!store.photoBall) { showShopMsg(t('photoTooBig')); }
+      else { showShopMsg(t('ballPhotoApplied')); }
       loadPhotoBallImage();
       renderShop();
     });
@@ -2581,7 +2786,7 @@
 
   // ---------- UI 바인딩 ----------
   function refreshToggleLabels() {
-    elMuteToggle.textContent = muted ? '소리 꺼짐' : '소리 켜짐';
+    elMuteToggle.textContent = muted ? t('soundOff') : t('soundOn');
     elMuteToggle.setAttribute('aria-pressed', String(muted));
   }
 
@@ -2624,6 +2829,7 @@
   elShopBack.addEventListener('click', closeShop);
   elCreditsBtn.addEventListener('click', () => { elMenu.classList.add('hidden'); elCredits.classList.remove('hidden'); });
   elCreditsBack.addEventListener('click', () => { elCredits.classList.add('hidden'); elMenu.classList.remove('hidden'); });
+  $('langToggle').addEventListener('click', function () { setLang(lang === 'ko' ? 'en' : 'ko'); });
   elTabBalls.addEventListener('click', () => showTab('balls'));
   elTabBgs.addEventListener('click', () => showTab('bgs'));
   elTabItems.addEventListener('click', () => showTab('items'));
@@ -2678,9 +2884,10 @@
 
   // ---------- 부팅 ----------
   resize();
-  elMenuBest.textContent = '최고 도달 ' + best + '판';
+  elMenuBest.textContent = masterMode ? t('masterReachedN', { n: best }) : t('reachedN', { n: best });
   updateStageSelect();
   refreshToggleLabels();
+  setLang(lang);
   running = true;
   lastTime = performance.now();
   requestAnimationFrame(loop);
