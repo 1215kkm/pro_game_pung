@@ -171,6 +171,11 @@
     animation: pop 0.5s ease;
   }
   .clear-sub { font-size: var(--font-xl); font-weight: 700; color: var(--secondary); }
+  .rest-badge {
+    font-size: var(--font-sm); font-weight: 800; letter-spacing: 3px;
+    color: var(--secondary); border: 2px solid var(--secondary); border-radius: var(--radius-full);
+    padding: 6px 18px; margin-bottom: 4px; animation: pop 0.5s ease;
+  }
 
   .gameover-row { display: flex; gap: var(--spacing-md); flex-wrap: wrap; justify-content: center; }
   .new-record {
@@ -338,6 +343,7 @@
 
 <!-- 체크포인트(3판마다) -->
 <div class="overlay hidden" id="checkpoint">
+  <div class="rest-badge">쉬는시간</div>
   <h2 class="clear-title" id="cpTitle">3판 클리어!</h2>
   <p class="subtitle">계속 도전할까요?</p>
   <div class="gameover-row">
@@ -594,6 +600,9 @@
   let winParticles = [];
   // 토스트(비차단)
   let toastText = '', toastTimer = 0;
+  // 하트 추가 연출(공 모두 터뜨려 생명 +1 됐을 때만)
+  let heartFx = 0;           // 0~1 진행도(1→0 으로 감쇠)
+  let heartFxParticles = [];  // 떠오르는 하트 파편
   // 코인 획득 카운터(5개째 축하용)
   let popsThisRun = 0;
 
@@ -1283,6 +1292,7 @@
     masterMode = false; flashAlpha = 0; shake = 0;
     lives = LIVES_START;
     toastText = ''; toastTimer = 0; popsThisRun = 0;
+    heartFx = 0; heartFxParticles = [];
     paddle = null; activeSticks = 0;
     recomputeKinematics();
     balls = [];
@@ -1506,11 +1516,29 @@
     shake = 12;
     vibrate([40, 30, 40, 30, 60]);
     awardCoin();
-    lives = Math.min(LIVES_MAX, lives + 1);
+    if (lives < LIVES_MAX) { lives += 1; spawnHeartFx(); } // 실제로 늘 때만 새 하트 연출
     updateHud();
     const idx = balls.indexOf(b);
     if (idx >= 0) balls.splice(idx, 1);
     reconcileBalls();
+  }
+
+  // 새 하트 획득 연출: 화면 상단 중앙에 큰 하트 팝 + 떠오르는 작은 하트들 + 진동
+  function spawnHeartFx() {
+    heartFx = 1;
+    heartFxParticles = [];
+    const cx = W / 2, cy = H * 0.26;
+    for (let i = 0; i < 12; i++) {
+      const a = -Math.PI / 2 + (Math.random() * 2 - 1) * 1.1;
+      const sp = 120 + Math.random() * 220;
+      heartFxParticles.push({
+        x: cx + (Math.random() * 2 - 1) * 30, y: cy + (Math.random() * 2 - 1) * 20,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 0.8 + Math.random() * 0.5, age: 0, size: 12 + Math.random() * 16,
+      });
+    }
+    flashAlpha = Math.max(flashAlpha, 0.35);
+    vibrate([15, 25, 15]);
   }
 
   // 튕김 처리(성공적으로 받음) — paddleHit=true면 패들이 받은 것
@@ -1734,6 +1762,14 @@
     flashAlpha *= Math.max(0, 1 - dt * 4);
     shake *= Math.max(0, 1 - dt * 8);
     if (toastTimer > 0) toastTimer -= dt;
+    if (heartFx > 0) {
+      heartFx = Math.max(0, heartFx - dt * 0.8);
+      for (let i = heartFxParticles.length - 1; i >= 0; i--) {
+        const p = heartFxParticles[i];
+        p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 60 * dt;
+        if (p.age >= p.life) heartFxParticles.splice(i, 1);
+      }
+    }
 
     if (fellCount > 0) {
       onBallLost();
@@ -1869,6 +1905,45 @@
     ctx.restore();
   }
 
+  // 하트 모양 path (중심 cx,cy, 크기 s)
+  function heartPath(c, cx, cy, s) {
+    c.beginPath();
+    const t = cy - s * 0.3;
+    c.moveTo(cx, cy + s * 0.7);
+    c.bezierCurveTo(cx - s, cy - s * 0.1, cx - s * 0.55, t - s * 0.8, cx, t);
+    c.bezierCurveTo(cx + s * 0.55, t - s * 0.8, cx + s, cy - s * 0.1, cx, cy + s * 0.7);
+    c.closePath();
+  }
+  function drawHeartFx() {
+    if (heartFx <= 0) return;
+    const cx = W / 2, cy = H * 0.26;
+    // 떠오르는 작은 하트들
+    for (const p of heartFxParticles) {
+      const a = Math.max(0, 1 - p.age / p.life);
+      ctx.save(); ctx.globalAlpha = a;
+      ctx.fillStyle = COL.primary;
+      ctx.shadowColor = hexToRgba(COL.primary, 0.7); ctx.shadowBlur = 12;
+      heartPath(ctx, p.x, p.y, p.size); ctx.fill();
+      ctx.restore();
+    }
+    // 중앙 큰 하트: 팝업(커졌다 작아지며) + "+1"
+    const e = heartFx;                         // 1→0
+    const scale = 1 + (1 - e) * 0.4;           // 살짝 커지며
+    const alpha = Math.min(1, e * 1.6);
+    const s = Math.min(W, H) * 0.10 * scale;
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.fillStyle = COL.primary;
+    ctx.shadowColor = hexToRgba(COL.primary, 0.8); ctx.shadowBlur = 26;
+    heartPath(ctx, cx, cy, s); ctx.fill();
+    ctx.shadowBlur = 0; ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 ' + Math.round(s * 0.7) + 'px ' + COL_FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('+1', cx, cy + s * 0.05);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   function drawToast() {
     if (toastTimer <= 0) return;
     const a = Math.min(1, toastTimer / 0.3);
@@ -1906,6 +1981,7 @@
         ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha.toFixed(3) + ')';
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
+      drawHeartFx();
       drawToast();
     } else if (state === STATE.WIN) {
       drawWinParticles();
