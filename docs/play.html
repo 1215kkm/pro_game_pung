@@ -861,6 +861,7 @@
   // ----- 30판 구조 + 무한 마스터모드 -----
   const TOTAL_STAGES = 30;
   const LIVES_START = 3, LIVES_MAX = 20; // 하트(생명) — 최대 20
+  const CHECKPOINT_ON = false;    // 3판마다 "쉬는시간" 체크포인트 (지금은 꺼둠)
 
   // ----- 난이도: 속도 곡선 (선형 가속, 기존의 반 속도) -----
   const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
@@ -1454,13 +1455,19 @@
     if (!sfxFallBuf) loadSfxFile('music/bubbles-single2.wav', (b) => { sfxFallBuf = b; });
     if (!sfxWinBuf) loadSfxFile('music/Win%20sound.wav', (b) => { sfxWinBuf = b; });
   }
+  // 효과음 노드가 끝나면 연결을 끊는다(iOS 사파리에서 노드 누적 → 무음 방지).
+  function cleanupOnEnd(src, nodes) {
+    src.onended = () => { try { src.disconnect(); } catch (e) { /* 무시 */ } for (const n of nodes) { try { n.disconnect(); } catch (e) { /* 무시 */ } } };
+  }
   function playSample(buf, vol) {
     if (!actx || muted || !buf) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
     const src = actx.createBufferSource();
     src.buffer = buf;
     const g = actx.createGain();
     g.gain.value = vol == null ? 0.9 : vol;
     src.connect(g); g.connect(masterGain); src.start();
+    cleanupOnEnd(src, [g]);
   }
   function playWin() { playSample(sfxWinBuf, 0.9); }
   function playFall() {
@@ -1477,6 +1484,7 @@
     g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
     o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.35);
+    cleanupOnEnd(o, [g]);
   }
 
   function playBoing(freq, pan) {
@@ -1497,6 +1505,7 @@
     if (panner) { panner.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(panner); tail = panner; }
     osc.connect(g); tail.connect(masterGain);
     osc.start(t); osc.stop(t + 0.45);
+    cleanupOnEnd(osc, panner ? [g, panner] : [g]);
   }
 
   // 터짐: 길고 시원한 화이트노이즈 스윕 + 상승 스파클 (0.6~0.9s 테일)
@@ -1517,6 +1526,7 @@
     ng.gain.setValueAtTime(0.35, t);
     ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
     src.connect(bp); bp.connect(ng); ng.connect(masterGain); src.start(t);
+    cleanupOnEnd(src, [bp, ng]);
     // 상승 스파클(쪼개지는 종소리 3음)
     [880, 1320, 1760].forEach((f, i) => {
       const o = actx.createOscillator(); const g = actx.createGain();
@@ -1526,6 +1536,7 @@
       g.gain.exponentialRampToValueAtTime(0.32, st + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, st + 0.7);
       o.connect(g); g.connect(masterGain); o.start(st); o.stop(st + 0.75);
+      cleanupOnEnd(o, [g]);
     });
   }
 
@@ -1539,6 +1550,7 @@
       g.gain.exponentialRampToValueAtTime(0.3, t + i * 0.04 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.04 + 0.5);
       o.connect(g); g.connect(masterGain); o.start(t + i * 0.04); o.stop(t + i * 0.04 + 0.55);
+      cleanupOnEnd(o, [g]);
     });
   }
 
@@ -1554,6 +1566,7 @@
       g.gain.exponentialRampToValueAtTime(0.35, st + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, st + 0.6);
       o.connect(g); g.connect(masterGain); o.start(st); o.stop(st + 0.65);
+      cleanupOnEnd(o, [g]);
     });
     const chordT = t + seq.length * 0.10;
     [523.25, 659.25, 783.99].forEach((f) => {
@@ -1564,6 +1577,7 @@
       g.gain.exponentialRampToValueAtTime(0.2, chordT + 0.04);
       g.gain.exponentialRampToValueAtTime(0.0001, chordT + 1.4);
       o.connect(lp); lp.connect(g); g.connect(masterGain); o.start(chordT); o.stop(chordT + 1.5);
+      cleanupOnEnd(o, [lp, g]);
     });
   }
 
@@ -2058,8 +2072,8 @@
       if (hasFeature('heartRegen') && cleared % 5 === 0 && lives < LIVES_MAX) { lives += 1; spawnHeartFx(); }
       // 토스트(비차단)
       showToast(t('stageClearedN', { n: cleared }));
-      // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
-      if (cleared % 3 === 0) { enterCheckpoint(cleared); return; }
+      // 3판마다 체크포인트("쉬는시간"). 지금은 잠깐 꺼둠(CHECKPOINT_ON=false).
+      if (CHECKPOINT_ON && cleared % 3 === 0) { enterCheckpoint(cleared); return; }
     }
   }
 
@@ -3547,17 +3561,19 @@
 
   // 백그라운드
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) { /* 무시 */ } }
-    } else {
+    // iOS 사파리: 우리가 직접 suspend 하면 제스처 없이 못 깨워 무음 교착이 생긴다.
+    // → 백그라운드로 갈 때 suspend 호출하지 않음(브라우저가 알아서 처리).
+    if (!document.hidden) {
       lastTime = performance.now();
+      // 복귀 시 resume 시도(비-제스처라 iOS에선 무시될 수 있음 → 다음 터치가 ensureAudio로 깨움)
       if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
       if (state === STATE.PLAYING && bgmEl && bgmEl.paused && !muted) bgmEl.play().catch(() => {});
     }
   });
 
-  ['touchstart', 'mousedown', 'keydown'].forEach((ev) =>
-    window.addEventListener(ev, ensureAudio, { once: false }));
+  // 모든 입력(터치·클릭·키)에서 오디오를 깨운다(제스처 안 → iOS resume 동작). 캡처 단계로 가장 먼저.
+  ['touchstart', 'mousedown', 'pointerdown', 'keydown'].forEach((ev) =>
+    window.addEventListener(ev, ensureAudio, { capture: true, passive: true }));
 
   // ---------- 부팅 ----------
   resize();
