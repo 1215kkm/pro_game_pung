@@ -1761,12 +1761,11 @@
       return;
     }
 
-    // 친 높이 반영: 친 위치가 낮을(늦을)수록 더 세게 튕겨 더 높이/오래 날아간다.
-    //   낮게 친 공은 화면 위로 시원하게 벗어났다가 떨어진다(밖으로 나가도 됨).
-    //   depth: 받는 영역 위(0) → 바닥(1). vUp = vNow * (1.05 ~ 2.25배).
+    // 친 높이 반영: 친 위치가 낮을(늦을)수록 더 세게 튕긴다(타이밍별 낙하 분산).
+    //   단 최대 높이는 수정 전과 동일(가장 낮게 친 공 = vNow). 높게 친 공은 그보다 덜.
+    //   depth: 받는 영역 위(0) → 바닥(1). vUp = vNow * (0.62 ~ 1.0배).
     const depth = Math.max(0, Math.min(1, (b.y - zoneTop()) / Math.max(1, H - zoneTop())));
-    let vUp = vNow * (1.05 + 1.2 * depth);
-    vUp = Math.min(vUp, vNow * 2.5);                 // 과도한 발사만 방지(넉넉한 상한)
+    const vUp = vNow * (0.62 + 0.38 * depth);
     b.vy = -vUp;
     b.vx += (Math.random() * 2 - 1) * 120;
     b.vx = Math.max(-380, Math.min(380, b.vx));
