@@ -1761,14 +1761,12 @@
       return;
     }
 
-    // 친 높이 반영: 친 위치에서 목표 정점(화면 RISE_FRAC 높이)까지 올라갈 속도를 준다.
-    // → 낮게(늦게) 친 공일수록 정점까지 멀어 더 세게 튕겨 더 오래 체공한다(직관 일치).
-    //   v = sqrt(2*g*올라갈높이). 정점은 항상 화면 안이라 밖으로 안 날아감. 안전 상한 포함.
-    const apexY = (1 - RISE_FRAC) * H;               // 목표 정점의 y(위로 갈수록 작음)
-    const rise = Math.max(b.r * 2, b.y - apexY);     // 친 위치에서 정점까지 올라갈 거리(최소 보장)
-    const gUpNow = (b.vy < 0) ? gUp : (masterMode ? gUp : gNow); // 상승 중력
-    let vUp = Math.sqrt(2 * gUpNow * rise);
-    vUp = Math.min(vUp, vNow * 1.6);                 // 안전 상한(과도한 발사 방지)
+    // 친 높이 반영: 친 위치가 낮을(늦을)수록 더 세게 튕겨 더 높이/오래 날아간다.
+    //   낮게 친 공은 화면 위로 시원하게 벗어났다가 떨어진다(밖으로 나가도 됨).
+    //   depth: 받는 영역 위(0) → 바닥(1). vUp = vNow * (1.05 ~ 2.25배).
+    const depth = Math.max(0, Math.min(1, (b.y - zoneTop()) / Math.max(1, H - zoneTop())));
+    let vUp = vNow * (1.05 + 1.2 * depth);
+    vUp = Math.min(vUp, vNow * 2.5);                 // 과도한 발사만 방지(넉넉한 상한)
     b.vy = -vUp;
     b.vx += (Math.random() * 2 - 1) * 120;
     b.vx = Math.max(-380, Math.min(380, b.vx));
