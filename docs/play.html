@@ -205,6 +205,26 @@
   #freezeBtn { background: linear-gradient(135deg,#4FC3F7,#2196F3); border-color:#4FC3F7; font-size:22px; }
   #freezeBtn:disabled { opacity: 0.5; }
 
+  /* 사용형 아이템 도크(시간정지 아래, 세로) */
+  .item-dock {
+    position: fixed; right: var(--spacing-md);
+    top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md) + 56px);
+    z-index: 7; display: flex; flex-direction: column; gap: 8px;
+  }
+  .item-dock.hidden { display: none; }
+  .item-dock .item-btn {
+    position: relative; width: 44px; height: 44px; border-radius: var(--radius-full);
+    border: 1px solid var(--dark-border); background: var(--dark-tertiary);
+    font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent; padding: 0;
+  }
+  .item-dock .item-btn.on { border-color: var(--secondary); box-shadow: 0 0 12px 2px rgba(250,204,21,0.5); }
+  .item-dock .item-btn .badge {
+    position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px;
+    border-radius: 9px; background: var(--secondary); color: #1B1D21;
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
+
   /* ===== 아이콘 토글(소리·크레딧·언어) + 상점 FAB ===== */
   .icon-btn {
     width: 48px; height: 48px; border-radius: var(--radius-full);
@@ -304,6 +324,9 @@
 
 <!-- 시간정지 아이템(게임 중 우상단) -->
 <button class="corner-btn right hidden" id="freezeBtn" aria-label="시간정지">⏱<span class="badge" id="freezeBadge">0</span></button>
+
+<!-- 사용형 아이템 도크(게임 중, 시간정지 아래) -->
+<div class="item-dock hidden" id="itemDock"></div>
 
 <!-- 스틱 트레이(게임 중, 우측 하단) -->
 <div class="stick-tray hidden" id="stickTray"></div>
@@ -572,7 +595,20 @@
       freezeInfo: (a) => '시간정지는 ' + a.sec + '초 동안 모든 공을 멈춥니다. 게임 중 우상단 ⏱ 버튼으로 사용하세요(개당 ' + a.price + ' 🪙). 멈춘 동안 아래 터치 영역에서 공을 터치해 두면, 카운트가 끝날 때 터치한 공들이 한꺼번에 위로 튕깁니다.',
       owned: '보유중',
       swipeName: '쓸어치기',
-      swipeInfo: '한 번 사면 영구! 공을 빠르게 쓸어치면(스와이프) 더 높이 튕깁니다. 천천히 치거나 탭하면 평소 높이. 손가락 궤적과 강타 효과가 표시됩니다.'
+      swipeInfo: '한 번 사면 영구! 공을 빠르게 쓸어치면(스와이프) 더 높이 튕깁니다. 천천히 치거나 탭하면 평소 높이. 손가락 궤적과 강타 효과가 표시됩니다.',
+      item_extraHeart: '목숨 한 칸', item_coinDouble: '2배 코인', item_slowFog: '느림보 안개',
+      item_scoreBoost: '점수 부스트', item_mulligan: '첫 실수 면제',
+      item_magnet: '자석 보정', item_comboBlaze: '콤보 불꽃', item_heartRegen: '하트 자동회복',
+      itemInfo_extraHeart: '게임오버 직전 하트 1개를 자동으로 되살립니다(자동 발동, 1회 소모).',
+      itemInfo_coinDouble: '게임 중 버튼으로 발동 → 이번 판 동안 터짐 코인 2배. 다음 판이 시작되면 사라집니다.',
+      itemInfo_slowFog: '게임 중 버튼으로 발동 → 8초간 모든 공이 느리게 떨어집니다(시간정지보다 약하지만 길게).',
+      itemInfo_scoreBoost: '게임 중 버튼으로 발동 → 15초간 점수 2배.',
+      itemInfo_mulligan: '매 판 첫 낙하 1회는 하트가 깎이지 않습니다(판마다 자동, 1회 소모).',
+      itemInfo_magnet: '영구. 캐치 판정이 너그러워져 공을 더 쉽게 받습니다.',
+      itemInfo_comboBlaze: '영구. 안 떨어뜨리고 연속 성공할수록 터짐 코인 보너스가 늘어납니다(낙하 시 리셋).',
+      itemInfo_heartRegen: '영구. 5판 클리어할 때마다 하트가 1개 자동 충전됩니다.',
+      coinDoubleOn: '코인 2배!', slowFogOn: '느림보 안개!', scoreBoostOn: '점수 2배!',
+      mulliganUsed: '첫 실수 면제!', extraHeartUsed: '부활! ❤️'
     },
     en: {
       title: 'Tunggling — Conquer 30',
@@ -666,7 +702,20 @@
       freezeInfo: (a) => 'Freeze stops every ball for ' + a.sec + ' seconds. Use the ⏱ button at the top-right during play (' + a.price + ' 🪙 each). While frozen, tap balls in the lower touch zone; when the countdown ends, all tapped balls bounce up at once.',
       owned: 'Owned',
       swipeName: 'Swipe Hit',
-      swipeInfo: 'Buy once, keep forever! Swipe quickly across a ball to bounce it higher. A slow touch or tap gives the normal height. Shows a finger trail and strong-hit effect.'
+      swipeInfo: 'Buy once, keep forever! Swipe quickly across a ball to bounce it higher. A slow touch or tap gives the normal height. Shows a finger trail and strong-hit effect.',
+      item_extraHeart: 'Extra Heart', item_coinDouble: 'Coin Doubler', item_slowFog: 'Slow Fog',
+      item_scoreBoost: 'Score Surge', item_mulligan: 'Mulligan',
+      item_magnet: 'Magnet Aim', item_comboBlaze: 'Combo Blaze', item_heartRegen: 'Heart Regen',
+      itemInfo_extraHeart: 'Automatically revives 1 heart right before game over (auto, consumes 1).',
+      itemInfo_coinDouble: 'Tap the in-game button to activate → double pop-coins for this stage. Clears when the next stage starts.',
+      itemInfo_slowFog: 'Tap the in-game button → all balls fall slower for 8s (weaker than freeze, but longer).',
+      itemInfo_scoreBoost: 'Tap the in-game button → double score for 15s.',
+      itemInfo_mulligan: 'The first drop of each stage costs no heart (auto each stage, consumes 1).',
+      itemInfo_magnet: 'Permanent. Wider catch window — catch balls more easily.',
+      itemInfo_comboBlaze: 'Permanent. The longer your no-drop streak, the bigger the pop-coin bonus (resets on drop).',
+      itemInfo_heartRegen: 'Permanent. Refills 1 heart every 5 stages cleared.',
+      coinDoubleOn: 'Coins x2!', slowFogOn: 'Slow fog!', scoreBoostOn: 'Score x2!',
+      mulliganUsed: 'Mulligan!', extraHeartUsed: 'Revived! ❤️'
     }
   };
   function t(key, a) { const tbl = I18N[lang] || I18N.ko; let d = tbl[key]; if (d == null) d = I18N.ko[key]; if (d == null) return key; return (typeof d === 'function') ? d(a) : d; }
@@ -751,6 +800,7 @@
   const elCropConvex = $('cropConvex');
   const elFreezeBtn = $('freezeBtn');
   const elFreezeBadge = $('freezeBadge');
+  const elItemDock = $('itemDock');
   const elGoShopBtn = $('goShopBtn');
   const elPause = $('pause');
   const elPauseResume = $('pauseResume');
@@ -855,6 +905,22 @@
   let freezeReleaseQueue = [];    // 정지 해제 후 지연 튕김 큐: { ball, delay }
   const FREEZE_PRICE = 40;
   const SWIPE_PRICE = 90;   // 쓸어치기(영구)
+  // ===== 신규 아이템 가격/상수 =====
+  const PRICE = { extraHeart: 35, coinDouble: 30, slowFog: 45, scoreBoost: 40, mulligan: 25,
+                  magnet: 120, comboBlaze: 100, heartRegen: 150 };
+  const SLOWFOG_SECONDS = 8;       // 느림보 안개 지속
+  const SLOWFOG_FACTOR = 0.6;      // 낙하속도 비율
+  const SCOREBOOST_SECONDS = 15;   // 점수 부스트 지속
+  // 런타임 상태(판/세션 중)
+  let coinMult = 1;                // 2배 코인(이번 판) → 판 시작 시 1로
+  let scoreMult = 1;               // 점수 부스트(시간)
+  let scoreBoostTimer = 0;
+  let fogTimer = 0;                // 느림보 안개 남은 시간
+  let mulliganReady = false;       // 이번 판 첫 낙하 면제 가능?
+  let comboStreak = 0;             // 콤보 불꽃: 연속 성공 카운트
+  function hasFeature(id) { return isOwned('features', id); }
+  function itemCount(id) { return (store.items && store.items[id]) | 0; }
+  function addItem(id, n) { if (!store.items) store.items = {}; store.items[id] = Math.max(0, itemCount(id) + n); saveStore(); }
   let flashAlpha = 0;
   let shake = 0;
   let lastTime = 0;
@@ -912,6 +978,7 @@
     equipped: { skin: 'default', bg: 'default' },
     sticks: 0,
     freezes: 0,
+    items: {},        // 소모품 개수: extraHeart/coinDouble/slowFog/scoreBoost/mulligan
     photo: null,
     photoBalls: [],   // 사진 공(여러 장). 각 원소 = dataURL
   };
@@ -952,6 +1019,7 @@
           },
           sticks: parsed.sticks | 0,
           freezes: parsed.freezes | 0,
+          items: (parsed.items && typeof parsed.items === 'object') ? parsed.items : {},
           photo: parsed.photo || null,
           photoBalls: Array.isArray(parsed.photoBalls) ? parsed.photoBalls
                      : (parsed.photoBall ? [parsed.photoBall] : []), // 구버전 단일 사진 마이그레이션
@@ -1564,6 +1632,8 @@
     slowFactor = 1; slowTimer = 0; zenActive = false; zenScored = false;
     masterMode = false; flashAlpha = 0; shake = 0;
     lives = LIVES_START;
+    coinMult = 1; scoreMult = 1; scoreBoostTimer = 0; fogTimer = 0;
+    mulliganReady = itemCount('mulligan') > 0; comboStreak = 0;
     toastText = ''; toastTimer = 0; popsThisRun = 0;
     heartFx = 0; heartFxParticles = [];
     freezeTimer = 0; freezePicked = []; freezeReleaseQueue = [];
@@ -1588,6 +1658,7 @@
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
+    renderItemDock();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1600,6 +1671,7 @@
     elStickTray.classList.add('hidden');
     elSkinDock.classList.add('hidden');
     elFreezeBtn.classList.add('hidden');
+    elItemDock.classList.add('hidden');
   }
 
   function gameOver() {
@@ -1653,6 +1725,7 @@
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
+    renderItemDock();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1748,7 +1821,9 @@
 
   // 코인 지급(판 난이도 비례). 5터짐마다 축하 토스트(터짐 횟수 기준).
   function awardCoin() {
-    const gain = 1 + Math.floor(stage / 3) + (masterMode ? Math.max(0, stage - TOTAL_STAGES) : 0);
+    let gain = 1 + Math.floor(stage / 3) + (masterMode ? Math.max(0, stage - TOTAL_STAGES) : 0);
+    gain *= coinMult;                                    // 2배 코인 아이템
+    if (hasFeature('comboBlaze')) gain += Math.floor(comboStreak / 5); // 콤보 불꽃 보너스
     addCoins(gain);
     popsThisRun += 1;
     if (popsThisRun % 5 === 0) showToast(t('coinsGained', { n: gain }));
@@ -1902,7 +1977,8 @@
   function progressStage(zenBonus) {
     const prevStage = stage;
     const gained = zenBonus ? 2 : 1;
-    score += prevStage * gained; // 성공 1회당 현재 판 수만큼(1판=1점, 2판=2점…). 젠보너스는 2회분.
+    score += prevStage * gained * scoreMult; // 성공 1회당 현재 판 수만큼 × 점수 부스트
+    comboStreak += gained;                   // 콤보 불꽃: 연속 성공 누적
     catchesInStage += gained;
     while (catchesInStage >= catchesForStage(stage) && (masterMode || stage < TOTAL_STAGES)) {
       catchesInStage -= catchesForStage(stage);
@@ -1916,11 +1992,15 @@
     // 클리어 검사(체크포인트보다 우선)
     if (!masterMode && stage >= TOTAL_STAGES) { winGame(); return; }
 
+    // 판이 올랐으면 2배 코인은 소멸(판당 1회)
+    if (stage > prevStage) coinMult = 1;
     // 판이 실제로 올랐다면(여러 판 점프 가능) — 가장 최근 클리어 판들 처리
     for (let s = prevStage; s < stage; s++) {
       const cleared = s;  // s판을 막 깬 것
       // 10판마다 막대기 무료 지급(서비스). 체크포인트보다 먼저 줘서 효과가 보이게.
       if (cleared % STICK_GIFT_EVERY === 0) giftStick(cleared);
+      // 하트 자동회복(영구): 5판마다 하트 1개 충전
+      if (hasFeature('heartRegen') && cleared % 5 === 0 && lives < LIVES_MAX) { lives += 1; spawnHeartFx(); }
       // 토스트(비차단)
       showToast(t('stageClearedN', { n: cleared }));
       // 3판마다 체크포인트(차단). 클리어(30)은 위에서 이미 winGame.
@@ -1968,7 +2048,7 @@
       if (!frozen && b.vy < -80) continue;          // 정지 중엔 올라가는 공도 선택 가능
       if (frozen && freezePicked.indexOf(b) >= 0) continue; // 이미 찜한 공 제외
       const d = Math.hypot(px - b.x, py - b.y);
-      const hitR = b.r + 36;
+      const hitR = b.r + 36 + (hasFeature('magnet') ? 34 : 0); // 자석 보정: 캐치 판정 너그럽게
       if (d < hitR) { if (d < bestD) { bestD = d; target = b; } }
     }
     if (target) {
@@ -2082,6 +2162,17 @@
       slowFactor = 0.34;
       if (slowTimer <= 0) { slowFactor = 1; zenActive = false; zenScored = false; }
     } else slowFactor = 1;
+    // 느림보 안개: 지속 동안 낙하속도 감소(젠보다 약함 → 더 느린 쪽 우선)
+    if (fogTimer > 0) {
+      fogTimer -= dt;
+      slowFactor = Math.min(slowFactor, SLOWFOG_FACTOR);
+      if (fogTimer <= 0) renderItemDock();
+    }
+    // 점수 부스트 타이머
+    if (scoreBoostTimer > 0) {
+      scoreBoostTimer -= dt;
+      if (scoreBoostTimer <= 0) { scoreMult = 1; renderItemDock(); }
+    }
 
     const sdt = dt * slowFactor;
     const py = paddleY();
@@ -2122,7 +2213,14 @@
         // 낙하(바닥 아래로): 그 공 제거 + 하트 1 차감 (즉시 게임오버 아님)
         if (b.y - b.r > H) {
           balls.splice(i, 1);
-          lives -= 1;
+          comboStreak = 0;                 // 콤보 불꽃 리셋
+          if (mulliganReady) {             // 첫 실수 면제: 이번 판 첫 낙하는 하트 안 깎음
+            mulliganReady = false;
+            addItem('mulligan', -1);
+            showToast(t('mulliganUsed'));
+          } else {
+            lives -= 1;
+          }
           fellCount += 1;
           i--;
           continue;
@@ -2163,7 +2261,15 @@
 
     if (fellCount > 0) {
       onBallLost();
-      if (lives <= 0) { gameOver(); return; }
+      if (lives <= 0) {
+        // 목숨 한 칸(소모품): 게임오버 직전 하트 1 부활
+        if (itemCount('extraHeart') > 0) {
+          addItem('extraHeart', -1);
+          lives = 1;
+          flashAlpha = Math.max(flashAlpha, 0.6); spawnHeartFx();
+          showToast(t('extraHeartUsed'));
+        } else { gameOver(); return; }
+      }
       reconcileBalls();
       updateHud();
     }
@@ -2537,7 +2643,7 @@
       shopFromPlay = false;
       // 게임 재개 + 게임 중 갱신(스킨/막대기/시정 변경 반영)
       state = STATE.PLAYING; startMusic(); lastTime = performance.now();
-      renderStickTray(); renderSkinDock(); renderFreezeBtn(); updateHud();
+      renderStickTray(); renderSkinDock(); renderFreezeBtn(); renderItemDock(); updateHud();
       return;
     }
     if (shopReturnTo === STATE.PAUSED) elPause.classList.remove('hidden');
@@ -2835,6 +2941,76 @@
     sinfo.className = 'shop-info';
     sinfo.textContent = t('swipeInfo');
     elGridItems.appendChild(sinfo);
+
+    // ===== 신규 아이템 =====
+    // 소모품(개수 구매): +1/+3/+5
+    consumableCard('extraHeart', '❤️‍🩹', PRICE.extraHeart);
+    consumableCard('coinDouble', '💰', PRICE.coinDouble);
+    consumableCard('slowFog', '🌫️', PRICE.slowFog);
+    consumableCard('scoreBoost', '✨', PRICE.scoreBoost);
+    consumableCard('mulligan', '🍀', PRICE.mulligan);
+    // 영구
+    permanentCard('magnet', '🧲', PRICE.magnet);
+    permanentCard('comboBlaze', '🔥', PRICE.comboBlaze);
+    permanentCard('heartRegen', '💗', PRICE.heartRegen);
+  }
+
+  // 아이콘 프리뷰 캔버스(이모지 큰 글자)
+  function emojiPreview(emoji) {
+    return makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+      c.font = Math.round(cw * 0.5) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(emoji, cw / 2, ch / 2);
+    });
+  }
+  // 소모품 카드(+1/+3/+5 수량 구매)
+  function consumableCard(id, emoji, unit) {
+    const card = document.createElement('div'); card.className = 'shop-card';
+    card.appendChild(emojiPreview(emoji));
+    const nm = document.createElement('div'); nm.className = 'shop-name';
+    nm.textContent = t('item_' + id) + ' (' + itemCount(id) + ')';
+    card.appendChild(nm);
+    const row = document.createElement('div'); row.className = 'stick-buy-row';
+    [1, 3, 5].forEach((qty) => {
+      const cost = unit * qty;
+      const btn = document.createElement('button'); btn.className = 'btn btn-primary';
+      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
+      btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
+      if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+      btn.addEventListener('click', () => {
+        if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
+        addItem(id, qty); renderShop();
+      });
+      row.appendChild(btn);
+    });
+    card.appendChild(row);
+    elGridItems.appendChild(card);
+    const info = document.createElement('div'); info.className = 'shop-info'; info.textContent = t('itemInfo_' + id);
+    elGridItems.appendChild(info);
+  }
+  // 영구 카드(한 번 구매)
+  function permanentCard(id, emoji, price) {
+    const owned = isOwned('features', id);
+    const card = document.createElement('div'); card.className = 'shop-card';
+    card.appendChild(emojiPreview(emoji));
+    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = t('item_' + id);
+    card.appendChild(nm);
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (owned ? 'btn-ghost' : 'btn-primary');
+    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
+    if (owned) { btn.textContent = t('owned'); btn.disabled = true; }
+    else {
+      btn.textContent = price + ' 🪙';
+      if (getCoins() < price) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+      btn.addEventListener('click', () => {
+        if (!buy('features', id, price)) { showShopMsg(t('notEnoughCoins')); return; }
+        renderShop();
+      });
+    }
+    card.appendChild(btn);
+    elGridItems.appendChild(card);
+    const info = document.createElement('div'); info.className = 'shop-info'; info.textContent = t('itemInfo_' + id);
+    elGridItems.appendChild(info);
   }
 
   let shopMsgTimer = null;
@@ -3165,6 +3341,46 @@
     showToast(t('freezeActivated'));
     vibrate([10, 20, 10]);
     renderFreezeBtn();
+  }
+
+  // ===== 사용형 아이템 도크(2배 코인·느림보 안개·점수 부스트) =====
+  const DOCK_ITEMS = [
+    { id: 'coinDouble', icon: '💰', isOn: () => coinMult > 1 },
+    { id: 'slowFog',    icon: '🌫️', isOn: () => fogTimer > 0 },
+    { id: 'scoreBoost', icon: '✨', isOn: () => scoreBoostTimer > 0 },
+  ];
+  function renderItemDock() {
+    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
+    const visible = DOCK_ITEMS.filter((it) => itemCount(it.id) > 0 || it.isOn());
+    if (!inPlay || visible.length === 0) { elItemDock.classList.add('hidden'); return; }
+    elItemDock.classList.remove('hidden');
+    elItemDock.innerHTML = '';
+    for (const it of visible) {
+      const btn = document.createElement('button');
+      btn.className = 'item-btn' + (it.isOn() ? ' on' : '');
+      btn.textContent = it.icon;
+      const badge = document.createElement('span'); badge.className = 'badge';
+      badge.textContent = String(itemCount(it.id));
+      btn.appendChild(badge);
+      btn.addEventListener('click', () => activateItem(it.id));
+      elItemDock.appendChild(btn);
+    }
+  }
+  function activateItem(id) {
+    if (state !== STATE.PLAYING) return;
+    if (itemCount(id) <= 0) return;
+    if (id === 'coinDouble') {
+      if (coinMult > 1) return;            // 이미 발동 중
+      coinMult = 2; addItem('coinDouble', -1); showToast(t('coinDoubleOn'));
+    } else if (id === 'slowFog') {
+      if (fogTimer > 0) return;
+      fogTimer = SLOWFOG_SECONDS; addItem('slowFog', -1); showToast(t('slowFogOn'));
+    } else if (id === 'scoreBoost') {
+      if (scoreBoostTimer > 0) return;
+      scoreBoostTimer = SCOREBOOST_SECONDS; scoreMult = 2; addItem('scoreBoost', -1); showToast(t('scoreBoostOn'));
+    }
+    vibrate([10, 20, 10]);
+    renderItemDock();
   }
   // 정지 종료: 터치한 시간차만큼 시차를 두고 순서대로 위로 튕긴다.
   //   먼저 터치한 공이 먼저, 늦게 터치한 공은 그 시간차만큼 늦게 튕긴다.
