@@ -515,7 +515,7 @@
     ko: {
       title: '튕글링 — 30판 정복',
       brand: '튕글링',
-      menuDesc: '떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·아이템을 사세요.',
+      menuDesc: '떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 조금씩 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·아이템을 사세요.',
       start: '게임 시작',
       shop: '상점',
       credits: '크레딧',
@@ -625,7 +625,7 @@
     en: {
       title: 'Tunggling — Conquer 30',
       brand: 'Tunggling',
-      menuDesc: 'Touch the falling ball in the lower zone to bounce it up. Each catch advances a stage — conquer all 30! Every 5 stages adds another ball; well-bounced balls ripen and pop into coins. Spend coins in the shop on skins, backgrounds and items.',
+      menuDesc: 'Touch the falling ball in the lower zone to bounce it up. Each catch advances a stage — conquer all 30! Stage 1 is very slow and it speeds up a little each stage. Every 5 stages adds another ball; well-bounced balls ripen and pop into coins. Spend coins in the shop on skins, backgrounds and items.',
       start: 'Start',
       shop: 'Shop',
       credits: 'Credits',
@@ -862,31 +862,32 @@
   const TOTAL_STAGES = 30;
   const LIVES_START = 3, LIVES_MAX = 20; // 하트(생명) — 최대 20
 
-  // ----- 난이도: 속도 곡선 (대칭, 고정 정점, 가변 중력) -----
+  // ----- 난이도: 속도 곡선 (선형 가속, 기존의 반 속도) -----
   const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
   const T_START = 3.0;            // 1판 왕복시간(초) — 아기도 할 만큼 느림
-  const T_END = 0.5;              // 30판 왕복시간(초)
-  const T_CURVE = 1.7;            // p^1.7 → 중반까지 느림, 후반 급강
-  const T_MASTER_MIN = 0.28;      // 마스터모드 왕복시간 하한
+  const T_END = 1.0;             // 30판 왕복시간(초) — 기존(0.5)의 반 속도
+  const T_STEP = (T_START - T_END) / (TOTAL_STAGES - 1); // 판당 왕복시간 감소량(선형, 같은 범위)
+  const T_MASTER_MIN = 0.5;       // 마스터모드 왕복시간 하한(번개 방지)
   let gNow = 600, vNow = 800;     // 현재 판의 중력·발사속도(recomputeKinematics 갱신)
   let gUp = 600, gDown = 600;     // 마스터모드 상승/하강 분리 중력
   function recomputeKinematics() {
     const h = RISE_FRAC * H;
     let T;
     if (masterMode) {
-      // 마스터모드: T 를 0.5 미만으로 더 줄임(판이 오를수록), 하한 T_MASTER_MIN
+      // 마스터모드: 30판 속도(T_END)에서 같은 선형 비율로 이어 빨라짐. 하한 T_MASTER_MIN.
       const over = Math.max(0, stage - TOTAL_STAGES);
-      T = Math.max(T_MASTER_MIN, T_END - over * 0.012);
+      T = Math.max(T_MASTER_MIN, T_END - over * T_STEP);
     } else {
-      // 판이 올라도 속도는 그대로(고정). 난이도는 공 개수로만.
-      T = T_START;
+      // 1판(T_START) → 30판(T_END) 선형 가속(한 판씩 같은 범위로 빨라짐)
+      const k = Math.max(0, Math.min(TOTAL_STAGES - 1, stage - 1));
+      T = T_START - T_STEP * k;
     }
     gNow = 8 * h / (T * T);
     vNow = 4 * h / T;
     if (masterMode) {
-      // 상승은 느슨하게, 하강은 매섭게(비대칭 허용 — 30판까지는 금지)
-      gUp = gNow * 0.8;
-      gDown = gNow * 1.6;
+      // 약한 비대칭(번개 방지 — 기존 0.8/1.6 → 0.95/1.15)
+      gUp = gNow * 0.95;
+      gDown = gNow * 1.15;
     } else {
       gUp = gNow; gDown = gNow;
     }
@@ -927,7 +928,7 @@
   const SLOWFOG_FACTOR = 0.6;      // 낙하속도 비율
   const SCOREBOOST_SECONDS = 15;   // 점수 부스트 지속
   const HIT_PAD = 36;              // 기본 터치 캐치 여유 반경
-  const MAGNET_PAD = 34;           // 자석 보정 추가 반경
+  const MAGNET_PAD = 17;           // 자석 보정 추가 반경(기존 34의 반)
   let magnetRings = [];            // 자석 캐치 범위 표시(터치 시 잠깐): { x, y, r, age }
   // 런타임 상태(판/세션 중)
   let coinMult = 1;                // 2배 코인(이번 판) → 판 시작 시 1로
@@ -965,6 +966,7 @@
       trail: [],
       spawnY: y,
       entering: false,
+      entryDelay: 0,              // 등장 전 대기(여러 공 0.1초씩 시차로 떨어지게)
       pops: 0,                    // 이 공을 튕긴 횟수 → 익음(ripeness)
       frozenHold: false,          // 시간정지 해제 후 튕길 차례 대기 중 고정
     };
@@ -1649,7 +1651,8 @@
   // 받는 영역 고정: 상단 38% 위, 하단 62% 받음.
   function zoneTop() { return H * 0.38; }
 
-  function spawnBall() {
+  const ENTRY_STAGGER = 0.1;      // 동시에 생기는 공들 사이 등장 시차(초)
+  function spawnBall(delay) {
     const margin = ballRadius * 1.5;
     let bestX = W / 2, bestGap = -1;
     for (let k = 0; k < 7; k++) {
@@ -1661,12 +1664,15 @@
     }
     const nb = makeBall(bestX, -ballRadius * 1.2, (Math.random() * 2 - 1) * 60, 0);
     nb.entering = true;
+    nb.entryDelay = delay || 0;
     nb.spawnY = H * 0.18;
     balls.push(nb);
   }
   function reconcileBalls() {
     const want = ballsForStage(stage);
-    while (balls.length < want) spawnBall();
+    // 한 번에 여러 개가 새로 생기면 0.1초씩 시차를 둬서 동시에 안 떨어지게.
+    let n = 0;
+    while (balls.length < want) { spawnBall(n * ENTRY_STAGGER); n++; }
   }
 
   function startGame(fromStage) {
@@ -2233,6 +2239,7 @@
     for (let i = 0; i < balls.length; i++) {
       const b = balls[i];
       if (b.entering) {
+        if (b.entryDelay > 0) { b.entryDelay -= dt; continue; } // 시차 대기(화면 위에서 멈춤)
         b.x += b.vx * sdt;
         b.y += (b.spawnY - b.y) * Math.min(1, dt * 4) + 260 * sdt;
         if (b.y >= b.spawnY) { b.entering = false; b.vy = 0; }
