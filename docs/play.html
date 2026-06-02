@@ -259,13 +259,19 @@
   }
   .stick-tray.hidden { display: none; }
   .stick-icon {
+    position: relative;
     border: 1px solid var(--dark-border); background: var(--dark-tertiary);
     color: var(--text-primary); border-radius: var(--radius-md); cursor: pointer;
-    min-height: 28px; height: 28px; width: 52px; font-weight: 700;
+    min-height: 36px; height: 36px; width: 56px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; padding: 0;
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   }
   .stick-icon.active { border-color: var(--secondary); background: var(--secondary); }
+  .stick-icon .stick-badge {
+    position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
+    border-radius: 9px; background: var(--primary); color: #fff;
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
   /* 무료 지급 시 멋지게 튀어오르는 등장 효과 */
   .stick-icon.gift { animation: stickGift 0.7s cubic-bezier(.2,1.4,.4,1) both; }
   @keyframes stickGift {
@@ -566,7 +572,7 @@
       reachedStageNbang: (a) => a.n + '판 도달!',
       applyPrice: (a) => '적용 (' + a.p + ' 🪙)',
       stickOwnedN: (a) => '막대기 (보유 ' + a.n + ')',
-      stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + a.max + '개까지 보입니다.',
+      stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 중 우측 하단 막대기 아이콘(보유 개수가 배지로 표시)을 탭할 때마다 켜는 개수가 1씩 늘어 패들이 길어집니다. 보유수를 넘기면 꺼져요. 한 번에 최대 ' + a.max + '개까지 켤 수 있고, 막대당 3번 받으면 사라집니다.',
       freezeActivated: '시간정지!',
       freezeOwnedN: (a) => '시간정지 (보유 ' + a.n + ')',
       freezeInfo: (a) => '시간정지는 ' + a.sec + '초 동안 모든 공을 멈춥니다. 게임 중 우상단 ⏱ 버튼으로 사용하세요(개당 ' + a.price + ' 🪙). 멈춘 동안 아래 터치 영역에서 공을 터치해 두면, 카운트가 끝날 때 터치한 공들이 한꺼번에 위로 튕깁니다.'
@@ -657,7 +663,7 @@
       reachedStageNbang: (a) => 'Reached stage ' + a.n + '!',
       applyPrice: (a) => 'Apply (' + a.p + ' 🪙)',
       stickOwnedN: (a) => 'Stick (own ' + a.n + ')',
-      stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). Turn on icons in the bottom tray; turn on 2 or more and they merge into one long paddle. Each stick disappears after 3 catches. The tray shows up to ' + a.max + ' icons.',
+      stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). During play, tap the stick icon at the bottom-right (owned count shown as a badge) to turn on one more each tap, making the paddle longer. Tapping past your count turns it off. Up to ' + a.max + ' at once; each stick disappears after 3 catches.',
       freezeActivated: 'Time freeze!',
       freezeOwnedN: (a) => 'Freeze (own ' + a.n + ')',
       freezeInfo: (a) => 'Freeze stops every ball for ' + a.sec + ' seconds. Use the ⏱ button at the top-right during play (' + a.price + ' 🪙 each). While frozen, tap balls in the lower touch zone; when the countdown ends, all tapped balls bounce up at once.'
@@ -1459,15 +1465,6 @@
     };
     paddle.x = Math.max(paddle.half, Math.min(W - paddle.half, paddle.x));
     renderStickTray();
-  }
-  // 트레이 아이콘 토글: i번째(0-based) 막대 활성/해제
-  function toggleStick(i) {
-    const ownable = Math.min(store.sticks, STICK_MAX_ICONS);
-    if (i >= ownable) return;
-    // 아이콘 i 가 활성 범위(< activeSticks) 안이면 그 지점까지 줄이고, 밖이면 i+1 까지 늘린다.
-    if (i < activeSticks) activeSticks = i;        // 해당 아이콘 끄기 → 그 앞까지만 유지
-    else activeSticks = i + 1;                     // 그 아이콘까지 켜기
-    rebuildPaddle();
   }
   function consumePaddleSticks() {
     // 패들 소멸 → 사용한 count 만큼 sticks 차감
@@ -2914,28 +2911,29 @@
   }
 
   // ================= 스틱 트레이 (게임 중) =================
+  // 아이콘 하나 + 보유 개수 배지. 탭할 때마다 활성 개수 0→1→…→보유수→0 순환(패들이 길어짐).
   function renderStickTray() {
     const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
     if (!inPlay || store.sticks <= 0) { elStickTray.classList.add('hidden'); return; }
     elStickTray.classList.remove('hidden');
     elStickTray.innerHTML = '';
-    // 가로 일렬 아이콘(최대 STICK_MAX_ICONS). 클릭 2개 이상 → 자동으로 하나의 긴 패들.
-    const show = Math.min(STICK_MAX_ICONS, store.sticks);
-    const giftAt = stickGiftFlash ? show - 1 : -1; // 방금 받은 막대기 = 표시 중 마지막 아이콘
-    for (let i = 0; i < show; i++) {
-      const ic = document.createElement('button');
-      ic.className = 'stick-icon' + (i < activeSticks ? ' active' : '') + (i === giftAt ? ' gift' : '');
-      ic.textContent = '▬';   // 가로 막대
-      ic.addEventListener('click', () => { toggleStick(i); });
-      elStickTray.appendChild(ic);
-    }
-    if (store.sticks > STICK_MAX_ICONS) {
-      const more = document.createElement('span');
-      more.className = 'stick-more' + (stickGiftFlash ? ' gift' : '');
-      more.textContent = '+' + (store.sticks - STICK_MAX_ICONS);
-      elStickTray.appendChild(more);
-    }
+    const ic = document.createElement('button');
+    ic.className = 'stick-icon' + (activeSticks > 0 ? ' active' : '') + (stickGiftFlash ? ' gift' : '');
+    ic.textContent = '▬';
+    // 배지: 활성 개수가 있으면 "활성/보유", 없으면 보유 개수만
+    const badge = document.createElement('span');
+    badge.className = 'stick-badge';
+    badge.textContent = activeSticks > 0 ? (activeSticks + '/' + store.sticks) : String(store.sticks);
+    ic.appendChild(badge);
+    ic.addEventListener('click', cycleSticks);
+    elStickTray.appendChild(ic);
     stickGiftFlash = false;
+  }
+  // 탭마다 활성 막대 개수를 1씩 늘리고, 보유수를 넘으면 0으로(끄기). 패들 자동 합체.
+  function cycleSticks() {
+    const ownable = Math.min(store.sticks, STICK_MAX_ICONS);
+    activeSticks = (activeSticks >= ownable) ? 0 : activeSticks + 1;
+    rebuildPaddle();
   }
 
   // ================= 보유 공 빠른 전환 독 (게임 중, 좌측 하단) =================
