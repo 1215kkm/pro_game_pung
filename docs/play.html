@@ -194,8 +194,6 @@
   }
   .corner-btn.left { left: var(--spacing-md); }
   .corner-btn.right { right: var(--spacing-md); }
-  /* 우측 두 번째 줄(상점 아래) — 시간정지 버튼 자리 */
-  .corner-btn.right.lower { top: calc(env(safe-area-inset-top, 0px) + var(--spacing-md) + 56px); }
   .corner-btn.hidden { display: none; }
   .corner-btn .badge {
     position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px;
@@ -305,11 +303,8 @@
 <!-- 게임 중 좌상단 일시정지 -->
 <button class="corner-btn left hidden" id="pauseBtn" aria-label="일시정지">⏸</button>
 
-<!-- 게임 중 우상단 상점(일시정지와 같은 높이) -->
-<button class="corner-btn right hidden" id="gamePlayShopBtn" aria-label="상점">🏪</button>
-
-<!-- 시간정지 아이템(게임 중 우측, 상점 아래 줄) -->
-<button class="corner-btn right lower hidden" id="freezeBtn" aria-label="시간정지">⏱<span class="badge" id="freezeBadge">0</span></button>
+<!-- 시간정지 아이템(게임 중 우상단, 일시정지와 같은 높이) -->
+<button class="corner-btn right hidden" id="freezeBtn" aria-label="시간정지">⏱<span class="badge" id="freezeBadge">0</span></button>
 
 <!-- 스틱 트레이(게임 중, 우측 하단) -->
 <div class="stick-tray hidden" id="stickTray"></div>
@@ -750,7 +745,6 @@
   const elCropFlat = $('cropFlat');
   const elCropConvex = $('cropConvex');
   const elPauseBtn = $('pauseBtn');
-  const elGamePlayShopBtn = $('gamePlayShopBtn');
   const elFreezeBtn = $('freezeBtn');
   const elFreezeBadge = $('freezeBadge');
   const elGoShopBtn = $('goShopBtn');
@@ -1585,7 +1579,6 @@
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
-    if (elGamePlayShopBtn) elGamePlayShopBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
@@ -1599,7 +1592,6 @@
     elHud.classList.add('hidden');
     elHud.setAttribute('aria-hidden', 'true');
     elPauseBtn.classList.add('hidden');
-    if (elGamePlayShopBtn) elGamePlayShopBtn.classList.add('hidden');
     elStickTray.classList.add('hidden');
     elSkinDock.classList.add('hidden');
     elFreezeBtn.classList.add('hidden');
@@ -1654,7 +1646,6 @@
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
     elPauseBtn.classList.remove('hidden');
-    if (elGamePlayShopBtn) elGamePlayShopBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
@@ -3110,7 +3101,6 @@
   // 상점
   elShopBtn.addEventListener('click', () => openShop(false));
   if (elGoShopBtn) elGoShopBtn.addEventListener('click', () => openShop('gameover'));
-  if (elGamePlayShopBtn) elGamePlayShopBtn.addEventListener('click', () => openShop('play'));
   elPauseShopBtn.addEventListener('click', () => openShop(true));
   elShopBack.addEventListener('click', closeShop);
   elCreditsBtn.addEventListener('click', () => { elMenu.classList.add('hidden'); elCredits.classList.remove('hidden'); });
