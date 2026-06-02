@@ -161,7 +161,6 @@
   }
   .btn-ghost[aria-pressed="true"] { border-color: var(--primary); color: var(--secondary); }
 
-  .toggles { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; justify-content: center; }
   .score-final { font-size: 72px; font-weight: 800; line-height: 1; }
   .score-final .unit { font-size: var(--font-lg); color: var(--text-secondary); font-weight: 500; }
   .clear-title {
@@ -194,7 +193,35 @@
     display: flex; align-items: center; justify-content: center;
   }
   .corner-btn.left { left: var(--spacing-md); }
+  .corner-btn.right { right: var(--spacing-md); }
   .corner-btn.hidden { display: none; }
+  .corner-btn .badge {
+    position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px;
+    border-radius: 9px; background: var(--secondary); color: #1B1D21;
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
+  #freezeBtn { background: linear-gradient(135deg,#4FC3F7,#2196F3); border-color:#4FC3F7; font-size:22px; }
+  #freezeBtn:disabled { opacity: 0.5; }
+
+  /* ===== 아이콘 토글(소리·크레딧·언어) + 상점 FAB ===== */
+  .icon-btn {
+    width: 48px; height: 48px; border-radius: var(--radius-full);
+    border: 1px solid var(--dark-border); background: var(--dark-tertiary);
+    color: var(--text-primary); font-size: 22px; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .icon-row { display: flex; gap: var(--spacing-md); justify-content: center; align-items: center; }
+  .shop-fab {
+    width: 76px; height: 76px; border-radius: var(--radius-full); border: none; cursor: pointer;
+    background: var(--gradient); color: #fff; font-size: 38px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb),0.45);
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    animation: pop 0.5s ease;
+  }
+  .shop-fab .fab-label { position: absolute; }
+  .shop-fab:active { transform: scale(0.94); }
 
   /* ===== 상점 ===== */
   .shop-head { display: flex; align-items: center; justify-content: space-between;
@@ -270,6 +297,9 @@
 <!-- 게임 중 좌상단 일시정지 -->
 <button class="corner-btn left hidden" id="pauseBtn" aria-label="일시정지">⏸</button>
 
+<!-- 시간정지 아이템(게임 중 우상단) -->
+<button class="corner-btn right hidden" id="freezeBtn" aria-label="시간정지">⏱<span class="badge" id="freezeBadge">0</span></button>
+
 <!-- 스틱 트레이(게임 중, 우측 하단) -->
 <div class="stick-tray hidden" id="stickTray"></div>
 
@@ -305,12 +335,12 @@
     <span class="ss-hint" id="stageSelHint">최고 도달 1판까지 선택</span>
   </div>
   <button class="btn btn-primary" id="startBtn" data-i18n="start">게임 시작</button>
-  <div class="toggles">
-    <button class="btn btn-ghost" id="shopBtn" data-i18n="shop">상점</button>
-    <button class="btn btn-ghost" id="muteToggle" aria-pressed="false">소리 켜짐</button>
-    <button class="btn btn-ghost" id="creditsBtn" data-i18n="credits">크레딧</button>
-    <button class="btn btn-ghost" id="langToggle">🇬🇧 English</button>
+  <div class="icon-row">
+    <button class="icon-btn" id="muteToggle" aria-pressed="false" aria-label="소리" title="소리">🔊</button>
+    <button class="icon-btn" id="creditsBtn" aria-label="크레딧" title="크레딧">ⓘ</button>
+    <button class="icon-btn" id="langToggle" aria-label="언어" title="언어">🇬🇧</button>
   </div>
+  <button class="shop-fab" id="shopBtn" aria-label="상점" title="상점">🛒</button>
 </div>
 
 <!-- 상점 -->
@@ -365,6 +395,7 @@
     <button class="btn btn-ghost" id="shareBtn" data-i18n="share">결과 공유</button>
     <button class="btn btn-ghost" id="menuBtn" data-i18n="menu">메뉴</button>
   </div>
+  <button class="shop-fab" id="goShopBtn" aria-label="상점" title="상점">🛒</button>
 </div>
 
 <!-- 클리어(승리) -->
@@ -530,7 +561,10 @@
       reachedStageNbang: (a) => a.n + '판 도달!',
       applyPrice: (a) => '적용 (' + a.p + ' 🪙)',
       stickOwnedN: (a) => '막대기 (보유 ' + a.n + ')',
-      stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + a.max + '개까지 보입니다.'
+      stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 화면 하단 가로 트레이에서 아이콘을 켜고, 2개 이상 켜면 자동으로 하나의 긴 패들로 합쳐집니다. 막대당 3번 받으면 사라져요. 트레이 아이콘은 최대 ' + a.max + '개까지 보입니다.',
+      freezeActivated: '시간정지!',
+      freezeOwnedN: (a) => '시간정지 (보유 ' + a.n + ')',
+      freezeInfo: (a) => '시간정지는 ' + a.sec + '초 동안 모든 공을 멈춥니다. 게임 중 우상단 ⏱ 버튼으로 사용하세요(개당 ' + a.price + ' 🪙). 멈춘 동안 아래 터치 영역에서 공을 터치해 두면, 카운트가 끝날 때 터치한 공들이 한꺼번에 위로 튕깁니다.'
     },
     en: {
       title: 'Tunggling — Conquer 30',
@@ -618,7 +652,10 @@
       reachedStageNbang: (a) => 'Reached stage ' + a.n + '!',
       applyPrice: (a) => 'Apply (' + a.p + ' 🪙)',
       stickOwnedN: (a) => 'Stick (own ' + a.n + ')',
-      stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). Turn on icons in the bottom tray; turn on 2 or more and they merge into one long paddle. Each stick disappears after 3 catches. The tray shows up to ' + a.max + ' icons.'
+      stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). Turn on icons in the bottom tray; turn on 2 or more and they merge into one long paddle. Each stick disappears after 3 catches. The tray shows up to ' + a.max + ' icons.',
+      freezeActivated: 'Time freeze!',
+      freezeOwnedN: (a) => 'Freeze (own ' + a.n + ')',
+      freezeInfo: (a) => 'Freeze stops every ball for ' + a.sec + ' seconds. Use the ⏱ button at the top-right during play (' + a.price + ' 🪙 each). While frozen, tap balls in the lower touch zone; when the countdown ends, all tapped balls bounce up at once.'
     }
   };
   function t(key, a) { const tbl = I18N[lang] || I18N.ko; let d = tbl[key]; if (d == null) d = I18N.ko[key]; if (d == null) return key; return (typeof d === 'function') ? d(a) : d; }
@@ -633,7 +670,7 @@
     try { if (typeof updateStageSelect === 'function') updateStageSelect(); } catch (e) { /* 무시 */ }
     try { if (typeof refreshToggleLabels === 'function') refreshToggleLabels(); } catch (e) { /* 무시 */ }
     try { if (elMenuBest) elMenuBest.textContent = (typeof masterMode !== 'undefined' && masterMode) ? t('masterReachedN', { n: best }) : t('reachedN', { n: best }); } catch (e) { /* 무시 */ }
-    try { var lt = $('langToggle'); if (lt) lt.textContent = t('langSwitch'); } catch (e) { /* 무시 */ }
+    try { var lt = $('langToggle'); if (lt) lt.textContent = (lang === 'ko') ? '🇬🇧' : '🇰🇷'; } catch (e) { /* 무시 */ }
     try { if (elShop && !elShop.classList.contains('hidden') && typeof renderShop === 'function') renderShop(); } catch (e) { /* 무시 */ }
   }
   function setLang(l) {
@@ -702,6 +739,9 @@
   const elCropFlat = $('cropFlat');
   const elCropConvex = $('cropConvex');
   const elPauseBtn = $('pauseBtn');
+  const elFreezeBtn = $('freezeBtn');
+  const elFreezeBadge = $('freezeBadge');
+  const elGoShopBtn = $('goShopBtn');
   const elPause = $('pause');
   const elPauseResume = $('pauseResume');
   const elPauseShopBtn = $('pauseShopBtn');
@@ -798,6 +838,11 @@
   let score = 0; // 이번 판 누적 점수 (성공 1회당 현재 판 수만큼)
   let masterMode = false;
   let lives;
+  // 시간정지 아이템: freezeTimer>0 동안 공이 멈추고, 그 사이 터치한 공을 모아 둔다(freezePicked).
+  const FREEZE_SECONDS = 3;
+  let freezeTimer = 0;            // 남은 정지 시간(초)
+  let freezePicked = [];          // 정지 중 터치된 공들(끝나면 위로 튕김)
+  const FREEZE_PRICE = 40;
   let flashAlpha = 0;
   let shake = 0;
   let lastTime = 0;
@@ -853,6 +898,7 @@
     owned: { skins: ['default'], bgs: ['default'], features: [] },
     equipped: { skin: 'default', bg: 'default' },
     sticks: 0,
+    freezes: 0,
     photo: null,
     photoBall: null,
   };
@@ -892,6 +938,7 @@
             bg: (parsed.equipped && parsed.equipped.bg) || 'default',
           },
           sticks: parsed.sticks | 0,
+          freezes: parsed.freezes | 0,
           photo: parsed.photo || null,
           photoBall: parsed.photoBall || null,
         };
@@ -1498,6 +1545,7 @@
     lives = LIVES_START;
     toastText = ''; toastTimer = 0; popsThisRun = 0;
     heartFx = 0; heartFxParticles = [];
+    freezeTimer = 0; freezePicked = [];
     paddle = null; activeSticks = 0;
     recomputeKinematics();
     balls = [];
@@ -1518,6 +1566,7 @@
     elPauseBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
+    renderFreezeBtn();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1530,6 +1579,7 @@
     elPauseBtn.classList.add('hidden');
     elStickTray.classList.add('hidden');
     elSkinDock.classList.add('hidden');
+    elFreezeBtn.classList.add('hidden');
   }
 
   function gameOver() {
@@ -1583,6 +1633,7 @@
     elPauseBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
+    renderFreezeBtn();
     updateHud();
     startMusic();
     lastTime = performance.now();
@@ -1840,18 +1891,26 @@
     if (state !== STATE.PLAYING) return;
     const inZone = py >= zoneTop();
     if (!inZone) return;
+    const frozen = freezeTimer > 0;
     let target = null, bestD = Infinity;
     for (const b of balls) {
       if (b.entering) continue;
       if (hitSet && hitSet.has(b.id)) continue;
-      if (b.vy < -80) continue;
+      if (!frozen && b.vy < -80) continue;          // 정지 중엔 올라가는 공도 선택 가능
+      if (frozen && freezePicked.indexOf(b) >= 0) continue; // 이미 찜한 공 제외
       const d = Math.hypot(px - b.x, py - b.y);
       const hitR = b.r + 36;
       if (d < hitR) { if (d < bestD) { bestD = d; target = b; } }
     }
     if (target) {
       if (hitSet) hitSet.add(target.id);
-      doBounce(target, false);
+      if (frozen) {
+        freezePicked.push(target);   // 정지 중: 찜만 해 둠(끝나면 튕김)
+        target.picked = true;        // 표시용 플래그
+        vibrate(8);
+      } else {
+        doBounce(target, false);
+      }
     }
   }
 
@@ -1905,6 +1964,19 @@
 
   // ---------- 업데이트 ----------
   function update(dt) {
+    // 시간정지: 카운트만 줄고 공은 완전히 멈춘다. 끝나면 터치해 둔 공들을 위로 튕김.
+    if (freezeTimer > 0) {
+      const prevCeil = Math.ceil(freezeTimer);
+      freezeTimer -= dt;
+      if (Math.ceil(freezeTimer) !== prevCeil) renderFreezeBtn(); // 카운트 표시 갱신
+      // 파티클/플래시/셰이크 등 가벼운 연출만 진행
+      flashAlpha *= Math.max(0, 1 - dt * 4);
+      shake *= Math.max(0, 1 - dt * 8);
+      if (toastTimer > 0) toastTimer -= dt;
+      if (freezeTimer <= 0) endFreeze();
+      return; // 공 물리는 정지
+    }
+
     if (slowTimer > 0) {
       slowTimer -= dt;
       slowFactor = 0.34;
@@ -2154,6 +2226,35 @@
     ctx.globalAlpha = 1;
   }
 
+  // 시간정지 연출: 얼음빛 틴트 + 찜한 공 링 + 큰 카운트다운 숫자
+  function drawFreezeFx() {
+    ctx.save();
+    ctx.fillStyle = 'rgba(79,195,247,0.16)';
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+    // 찜한 공들에 위로 갈 방향 표시(링 + ↑)
+    for (const b of freezePicked) {
+      if (balls.indexOf(b) < 0) continue;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 10, 0, Math.PI * 2);
+      ctx.lineWidth = 4; ctx.strokeStyle = '#4FC3F7';
+      ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 16; ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF'; ctx.font = '800 ' + Math.round(b.r * 0.9) + 'px ' + COL_FONT;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('↑', b.x, b.y);
+    }
+    // 큰 카운트다운
+    const n = Math.ceil(freezeTimer);
+    const frac = freezeTimer - Math.floor(freezeTimer); // 1→0
+    ctx.globalAlpha = Math.min(1, 0.35 + frac * 0.65);
+    ctx.fillStyle = '#4FC3F7';
+    ctx.shadowColor = 'rgba(79,195,247,0.7)'; ctx.shadowBlur = 24;
+    ctx.font = '800 ' + Math.round(Math.min(W, H) * 0.36) + 'px ' + COL_FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), W / 2, H * 0.42);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   function drawToast() {
     if (toastTimer <= 0) return;
     const a = Math.min(1, toastTimer / 0.3);
@@ -2191,6 +2292,7 @@
         ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha.toFixed(3) + ')';
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
+      if (freezeTimer > 0) drawFreezeFx();
       drawHeartFx();
       drawToast();
     } else if (state === STATE.WIN) {
@@ -2282,9 +2384,11 @@
   // ================= 상점 UI =================
   let shopReturnTo = STATE.MENU;   // 닫을 때 돌아갈 상태(메뉴 or 일시정지)
 
-  function openShop(fromPause) {
-    shopReturnTo = fromPause ? STATE.PAUSED : STATE.MENU;
-    if (fromPause) elPause.classList.add('hidden');
+  function openShop(from) {
+    // from: true=일시정지, 'gameover'=게임오버, 그 외=메뉴
+    shopReturnTo = (from === true) ? STATE.PAUSED : (from === 'gameover' ? STATE.GAMEOVER : STATE.MENU);
+    if (shopReturnTo === STATE.PAUSED) elPause.classList.add('hidden');
+    else if (shopReturnTo === STATE.GAMEOVER) elGameover.classList.add('hidden');
     else elMenu.classList.add('hidden');
     elShop.classList.remove('hidden');
     showTab('balls');
@@ -2293,6 +2397,7 @@
   function closeShop() {
     elShop.classList.add('hidden');
     if (shopReturnTo === STATE.PAUSED) elPause.classList.remove('hidden');
+    else if (shopReturnTo === STATE.GAMEOVER) elGameover.classList.remove('hidden');
     else elMenu.classList.remove('hidden');
   }
   function showTab(which) {
@@ -2490,11 +2595,48 @@
     card.appendChild(btnRow);
     elGridItems.appendChild(card);
 
-    // 안내
+    // 안내(막대기)
     const info = document.createElement('div');
     info.className = 'shop-info';
     info.textContent = t('stickInfo', { price: STICK_PRICE, max: STICK_MAX_ICONS });
     elGridItems.appendChild(info);
+
+    // 시간정지 카드
+    const fprev = makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+      c.font = '700 ' + Math.round(cw * 0.5) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('⏱', cw / 2, ch / 2);
+    });
+    const fcard = document.createElement('div');
+    fcard.className = 'shop-card';
+    fcard.appendChild(fprev);
+    const fnm = document.createElement('div'); fnm.className = 'shop-name';
+    fnm.textContent = t('freezeOwnedN', { n: store.freezes });
+    fcard.appendChild(fnm);
+    const fRow = document.createElement('div');
+    fRow.className = 'stick-buy-row';
+    [1, 3, 5].forEach((qty) => {
+      const cost = FREEZE_PRICE * qty;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
+      btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
+      if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+      btn.addEventListener('click', () => {
+        if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
+        store.freezes += qty; saveStore();
+        renderShop(); renderFreezeBtn();
+      });
+      fRow.appendChild(btn);
+    });
+    fcard.appendChild(fRow);
+    elGridItems.appendChild(fcard);
+
+    const finfo = document.createElement('div');
+    finfo.className = 'shop-info';
+    finfo.textContent = t('freezeInfo', { sec: FREEZE_SECONDS, price: FREEZE_PRICE });
+    elGridItems.appendChild(finfo);
   }
 
   let shopMsgTimer = null;
@@ -2789,9 +2931,38 @@
     }
   }
 
+  // ================= 시간정지 아이템 =================
+  function renderFreezeBtn() {
+    const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
+    if (!inPlay || store.freezes <= 0) { elFreezeBtn.classList.add('hidden'); return; }
+    elFreezeBtn.classList.remove('hidden');
+    elFreezeBadge.textContent = freezeTimer > 0 ? Math.ceil(freezeTimer) : store.freezes;
+    elFreezeBtn.disabled = (freezeTimer > 0); // 발동 중엔 재클릭 불가
+  }
+  function activateFreeze() {
+    if (state !== STATE.PLAYING || freezeTimer > 0 || store.freezes <= 0) return;
+    store.freezes -= 1; saveStore();
+    freezeTimer = FREEZE_SECONDS;
+    freezePicked = [];
+    showToast(t('freezeActivated'));
+    vibrate([10, 20, 10]);
+    renderFreezeBtn();
+  }
+  // 정지 종료: 그 사이 터치해 둔 공들을 위로 튕긴다.
+  function endFreeze() {
+    freezeTimer = 0;
+    for (const b of freezePicked) {
+      b.picked = false;
+      if (balls.indexOf(b) < 0) continue; // 이미 사라진 공 제외
+      doBounce(b, false);
+    }
+    freezePicked = [];
+    renderFreezeBtn();
+  }
+
   // ---------- UI 바인딩 ----------
   function refreshToggleLabels() {
-    elMuteToggle.textContent = muted ? t('soundOff') : t('soundOn');
+    elMuteToggle.textContent = muted ? '🔇' : '🔊';
     elMuteToggle.setAttribute('aria-pressed', String(muted));
   }
 
@@ -2828,8 +2999,12 @@
     muted = !muted; ensureAudio(); setMasterMute(); refreshToggleLabels();
   });
 
+  // 시간정지 아이템
+  elFreezeBtn.addEventListener('click', activateFreeze);
+
   // 상점
   elShopBtn.addEventListener('click', () => openShop(false));
+  if (elGoShopBtn) elGoShopBtn.addEventListener('click', () => openShop('gameover'));
   elPauseShopBtn.addEventListener('click', () => openShop(true));
   elShopBack.addEventListener('click', closeShop);
   elCreditsBtn.addEventListener('click', () => { elMenu.classList.add('hidden'); elCredits.classList.remove('hidden'); });
