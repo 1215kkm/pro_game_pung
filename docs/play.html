@@ -515,7 +515,7 @@
     ko: {
       title: '튕글링 — 30판 정복',
       brand: '튕글링',
-      menuDesc: '떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 1판은 아주 느리고, 판이 오를수록 빨라집니다. 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·막대기를 사세요.',
+      menuDesc: '떨어지는 공을 하단 영역에서 터치해 튕기세요. 한 번 받을 때마다 다음 판 — 30판을 정복! 5판마다 공이 하나씩 늘고, 잘 튕긴 공은 익다가 터지며 코인을 줍니다. 코인으로 상점에서 스킨·배경·아이템을 사세요.',
       start: '게임 시작',
       shop: '상점',
       credits: '크레딧',
@@ -625,7 +625,7 @@
     en: {
       title: 'Tunggling — Conquer 30',
       brand: 'Tunggling',
-      menuDesc: 'Touch the falling ball in the lower zone to bounce it up. Each catch advances a stage — conquer all 30! Stage 1 is very slow, and it speeds up as you climb. Every 5 stages adds another ball; well-bounced balls ripen and pop into coins. Spend coins in the shop on skins, backgrounds and sticks.',
+      menuDesc: 'Touch the falling ball in the lower zone to bounce it up. Each catch advances a stage — conquer all 30! Every 5 stages adds another ball; well-bounced balls ripen and pop into coins. Spend coins in the shop on skins, backgrounds and items.',
       start: 'Start',
       shop: 'Shop',
       credits: 'Credits',
@@ -878,8 +878,8 @@
       const over = Math.max(0, stage - TOTAL_STAGES);
       T = Math.max(T_MASTER_MIN, T_END - over * 0.012);
     } else {
-      const p = Math.max(0, Math.min(1, (stage - 1) / (TOTAL_STAGES - 1)));
-      T = T_START + (T_END - T_START) * Math.pow(p, T_CURVE);
+      // 판이 올라도 속도는 그대로(고정). 난이도는 공 개수로만.
+      T = T_START;
     }
     gNow = 8 * h / (T * T);
     vNow = 4 * h / T;
