@@ -1561,6 +1561,7 @@
     toastText = ''; toastTimer = 0; popsThisRun = 0;
     heartFx = 0; heartFxParticles = [];
     freezeTimer = 0; freezePicked = []; freezeReleaseQueue = [];
+    dragTrail = []; dragActive = false; lastMove = null; curPower = 0;
     paddle = null; activeSticks = 0;
     recomputeKinematics();
     balls = [];
@@ -1812,8 +1813,10 @@
     vibrate([15, 25, 15]);
   }
 
-  // 튕김 처리(성공적으로 받음) — paddleHit=true면 패들이 받은 것
-  function doBounce(b, paddleHit) {
+  // 튕김 처리(성공적으로 받음) — paddleHit=true면 패들이 받은 것.
+  //   power: 0=탭(맨 위 근처까지), 1=빠른 스와이프(화면 밖까지 시원하게). 기본 0.
+  function doBounce(b, paddleHit, power) {
+    power = Math.max(0, Math.min(1, power || 0));
     b.pops += 1;
 
     // 임계 도달 → 터짐
@@ -1828,16 +1831,22 @@
     }
 
     // 친 높이 반영: 친 위치가 낮을(늦을)수록 더 세게 튕긴다(타이밍별 낙하 분산).
-    //   화면 맨 위보다 살짝 더 올라가되 공 끝(아래)은 늘 보이게 정점에 상한을 둔다.
-    //   depth: 받는 영역 위(0) → 바닥(1). vUp = vNow * (0.82 ~ 1.2배).
+    //   탭: 맨 위 근처(화면 안, 위에서 공 하나 높이만큼 부족)까지. 스와이프(power↑): 화면 밖까지.
+    //   depth: 받는 영역 위(0) → 바닥(1).
     const depth = Math.max(0, Math.min(1, (b.y - zoneTop()) / Math.max(1, H - zoneTop())));
-    let vUp = vNow * (0.82 + 0.38 * depth);
-    // 정점에서 공 중심이 minApexY 위로는 안 가게(=공 끝이 화면에 보이게) 속도 상한.
+    let vUp = vNow * (0.95 + 0.35 * depth);
     const gUpNow = masterMode ? gUp : gNow;
-    const minApexY = -b.r * 0.6;                         // 공 윗부분만 살짝 나감(끝은 보임)
-    const maxRise = Math.max(0, b.y - minApexY);         // 친 위치 → 허용 정점까지 거리
-    const vMax = Math.sqrt(2 * gUpNow * maxRise);
-    vUp = Math.min(vUp, vMax);
+    // 탭 상한: 정점에서 공 윗부분이 화면 위에서 공 하나 높이만큼 부족(=화면 안에 머묾).
+    const tapApexY = b.r * 2;                              // 공 위 끝이 화면 위에서 공지름만큼 아래
+    const tapMaxRise = Math.max(0, b.y - tapApexY);
+    const vTapMax = Math.sqrt(2 * gUpNow * tapMaxRise);
+    // 스와이프 상한: 화면 위로 시원하게(공 끝만 살짝 보이게).
+    const swipeApexY = -b.r * 0.6;
+    const swipeMaxRise = Math.max(0, b.y - swipeApexY);
+    const vSwipeMax = Math.sqrt(2 * gUpNow * swipeMaxRise);
+    // power 로 탭↔스와이프 상한 보간
+    const vCap = vTapMax + (vSwipeMax - vTapMax) * power;
+    vUp = Math.min(Math.max(vUp, vNow * (0.95 + 0.35 * depth) * (1 + power * 0.6)), vCap);
     b.vy = -vUp;
     b.vx += (Math.random() * 2 - 1) * 120;
     b.vx = Math.max(-380, Math.min(380, b.vx));
@@ -1849,17 +1858,41 @@
     const pan = (b.x / W) * 2 - 1;
     playBoing(bouncePitch(b), pan);
 
+    // 스와이프로 세게 친 경우: 강타 연출(파티클 + 진동 + 플래시)
+    if (power > 0.45) {
+      spawnHitBurst(b, power);
+      flashAlpha = Math.max(flashAlpha, 0.25 * power);
+      vibrate([18, 10, 24]);
+    }
+
     const zenBonus = zenActive && !zenScored;
     if (zenBonus) {
       zenScored = true; flashAlpha = 0.85; playFlash();
       vibrate([20, 40, 20]);
       slowTimer = Math.min(slowTimer, 0.25);
-    } else if (!paddleHit) {
+    } else if (!paddleHit && power <= 0.45) {
       vibrate(15);
     }
 
     progressStage(zenBonus);
     maybeZen();
+  }
+
+  // 스와이프 강타 연출: 흰 스파크가 사방으로 튀고 작은 충격 링
+  function spawnHitBurst(b, power) {
+    const n = 10 + Math.floor(power * 14);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 240 + Math.random() * 360 * power;
+      particles.push({
+        x: b.x, y: b.y - b.r * 0.4,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80,
+        life: 0.35 + Math.random() * 0.3, age: 0,
+        size: 2 + Math.random() * 4, rot: 0,
+        color: '#FFFFFF', ring: false,
+      });
+    }
+    particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.4, age: 0, size: b.r * 1.1, rot: 0, color: '#FFFFFF', ring: true });
   }
 
   // 판 진행 로직(터짐·일반 공통). zenBonus면 두 판.
@@ -1908,7 +1941,18 @@
   }
 
   // ---------- 입력 ----------
-  function tryHit(px, py, hitSet) {
+  // 스와이프 속도 → power(0~1). SWIPE_REF px/s 이상이면 최대.
+  const SWIPE_MIN = 600;     // 이 속도 미만이면 사실상 탭(power≈0)
+  const SWIPE_REF = 2600;    // 이 속도 이상이면 power=1
+  function speedToPower(speed) {
+    if (speed <= SWIPE_MIN) return 0;
+    return Math.max(0, Math.min(1, (speed - SWIPE_MIN) / (SWIPE_REF - SWIPE_MIN)));
+  }
+  // 드래그 궤적(시각용)
+  let dragTrail = [];        // { x, y, age }
+  let dragActive = false;
+
+  function tryHit(px, py, hitSet, power) {
     if (state !== STATE.PLAYING) return;
     const inZone = py >= zoneTop();
     if (!inZone) return;
@@ -1931,7 +1975,7 @@
         target.pickedElapsed = FREEZE_SECONDS - freezeTimer; // 터치 시각(정지 시작 후 경과)
         vibrate(8);
       } else {
-        doBounce(target, false);
+        doBounce(target, false, power || 0);
       }
     }
   }
@@ -1949,6 +1993,8 @@
   }
 
   let paddleDragging = false;
+  let lastMove = null;       // { x, y, t } 직전 이동 지점(속도 계산용)
+  let curPower = 0;          // 현재 드래그 속도 기반 power
   function onPointer(e) {
     ensureAudio();
     if (state !== STATE.PLAYING) return;
@@ -1959,20 +2005,44 @@
       const py = pts[0].y;
       if (py > paddleY() - 80) { paddleDragging = true; paddle.x = pts[0].x; }
     }
+    // 드래그 시작
+    dragActive = true; curPower = 0;
+    if (pts.length) lastMove = { x: pts[0].x, y: pts[0].y, t: performance.now() };
     const hitSet = new Set();
-    for (const p of pts) tryHit(p.x, p.y, hitSet);
+    for (const p of pts) tryHit(p.x, p.y, hitSet, 0); // 첫 접촉은 탭(power 0)
   }
   function onPointerMove(e) {
-    if (state !== STATE.PLAYING || !paddle || !paddleDragging) return;
-    e.preventDefault();
+    if (state !== STATE.PLAYING) return;
     const pts = pointsFromEvent(e);
-    if (pts.length) paddle.x = Math.max(paddle.half, Math.min(W - paddle.half, pts[0].x));
+    if (!pts.length) return;
+    // 패들 드래그
+    if (paddle && paddleDragging) {
+      e.preventDefault();
+      paddle.x = Math.max(paddle.half, Math.min(W - paddle.half, pts[0].x));
+    }
+    if (!dragActive) return;
+    e.preventDefault();
+    const p = pts[0];
+    const now = performance.now();
+    // 속도 계산
+    if (lastMove) {
+      const dtm = Math.max(1, now - lastMove.t) / 1000;
+      const dist = Math.hypot(p.x - lastMove.x, p.y - lastMove.y);
+      const speed = dist / dtm;
+      curPower = speedToPower(speed);
+      // 궤적 점 추가(이동량 있을 때만)
+      if (dist > 2) { dragTrail.push({ x: p.x, y: p.y, age: 0, power: curPower }); if (dragTrail.length > 22) dragTrail.shift(); }
+    }
+    lastMove = { x: p.x, y: p.y, t: now };
+    // 드래그가 공에 닿으면 그 속도(power)로 튕김
+    const hitSet = new Set();
+    tryHit(p.x, p.y, hitSet, curPower);
   }
-  function onPointerUp() { paddleDragging = false; }
+  function onPointerUp() { paddleDragging = false; dragActive = false; lastMove = null; }
   canvas.addEventListener('touchstart', onPointer, { passive: false });
   canvas.addEventListener('mousedown', onPointer);
   canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-  canvas.addEventListener('mousemove', (e) => { if (paddleDragging) onPointerMove(e); });
+  canvas.addEventListener('mousemove', (e) => { if (dragActive || paddleDragging) onPointerMove(e); });
   canvas.addEventListener('touchend', onPointerUp);
   canvas.addEventListener('mouseup', onPointerUp);
 
@@ -2075,6 +2145,11 @@
         p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 60 * dt;
         if (p.age >= p.life) heartFxParticles.splice(i, 1);
       }
+    }
+    // 드래그 궤적 페이드
+    for (let i = dragTrail.length - 1; i >= 0; i--) {
+      dragTrail[i].age += dt;
+      if (dragTrail[i].age > 0.35) dragTrail.splice(i, 1);
     }
 
     if (fellCount > 0) {
@@ -2211,6 +2286,26 @@
     ctx.restore();
   }
 
+  // 드래그 궤적: 속도(power)가 빠를수록 굵고 노랗게 빛나는 꼬리
+  function drawDragTrail() {
+    if (dragTrail.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 1; i < dragTrail.length; i++) {
+      const a = dragTrail[i - 1], b = dragTrail[i];
+      const fade = Math.max(0, 1 - b.age / 0.35);
+      const pw = b.power || 0;
+      ctx.globalAlpha = fade * (0.35 + pw * 0.5);
+      ctx.lineWidth = 4 + pw * 12;
+      // 느림=흰색, 빠름=노랑(강함)
+      ctx.strokeStyle = pw > 0.45 ? COL.secondary : 'rgba(255,255,255,0.9)';
+      if (pw > 0.45) { ctx.shadowColor = hexToRgba(COL.secondary, 0.8); ctx.shadowBlur = 12; } else ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   // 하트 모양 path (중심 cx,cy, 크기 s)
   function heartPath(c, cx, cy, s) {
     c.beginPath();
@@ -2317,6 +2412,7 @@
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
       if (freezeTimer > 0) drawFreezeFx();
+      drawDragTrail();
       drawHeartFx();
       drawToast();
     } else if (state === STATE.WIN) {
