@@ -1481,6 +1481,7 @@
 
   function playBoing(freq, pan) {
     if (!actx || muted) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
     const t = actx.currentTime;
     const osc = actx.createOscillator();
     const g = actx.createGain();
