@@ -877,6 +877,7 @@
       spawnY: y,
       entering: false,
       pops: 0,                    // 이 공을 튕긴 횟수 → 익음(ripeness)
+      frozenHold: false,          // 시간정지 해제 후 튕길 차례 대기 중 고정
     };
   }
   let particles = [];
@@ -2089,6 +2090,9 @@
         if (b.y >= b.spawnY) { b.entering = false; b.vy = 0; }
         if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); }
         if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
+      } else if (b.frozenHold) {
+        // 시간정지 해제 후, 튕길 차례가 올 때까지 그 자리에 멈춤(중력 무시)
+        b.vy = 0; b.vx = 0;
       } else {
         const g = (b.vy < 0) ? gUp : gDown;   // 마스터모드는 분리, 그 외엔 동일
         b.vy += g * sdt;
@@ -3065,14 +3069,14 @@
     badge.className = 'stick-badge';
     badge.textContent = activeSticks > 0 ? (activeSticks + '/' + store.sticks) : String(store.sticks);
     ic.appendChild(badge);
-    ic.addEventListener('click', cycleSticks);
+    ic.addEventListener('click', toggleSticks);
     elStickTray.appendChild(ic);
     stickGiftFlash = false;
   }
-  // 탭마다 활성 막대 개수를 1씩 늘리고, 보유수를 넘으면 0으로(끄기). 패들 자동 합체.
-  function cycleSticks() {
+  // 탭하면 보유한 막대기 전체가 처음부터 하나의 긴 패들로 켜진다. 다시 탭하면 끔(on/off).
+  function toggleSticks() {
     const ownable = Math.min(store.sticks, STICK_MAX_ICONS);
-    activeSticks = (activeSticks >= ownable) ? 0 : activeSticks + 1;
+    activeSticks = (activeSticks > 0) ? 0 : ownable;
     rebuildPaddle();
   }
 
@@ -3133,6 +3137,8 @@
         b.picked = false;
         if (balls.indexOf(b) < 0) continue; // 이미 사라진 공 제외
         const delay = Math.max(0, (b.pickedElapsed || 0) - t0); // 터치 시간차 = 튕김 시차
+        b.frozenHold = true;  // 튕길 차례가 올 때까지 그 자리에 고정(중력 무시)
+        b.vy = 0; b.vx = 0;
         freezeReleaseQueue.push({ ball: b, delay: delay });
       }
     }
@@ -3146,7 +3152,7 @@
       const it = freezeReleaseQueue[i];
       it.delay -= dt;
       if (it.delay <= 0) {
-        if (balls.indexOf(it.ball) >= 0) doBounce(it.ball, false);
+        if (balls.indexOf(it.ball) >= 0) { it.ball.frozenHold = false; doBounce(it.ball, false); }
         freezeReleaseQueue.splice(i, 1);
       }
     }
