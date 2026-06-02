@@ -997,7 +997,7 @@
     sticks: 0,
     freezes: 0,
     items: {},        // 소모품 개수: extraHeart/coinDouble/slowFog/scoreBoost/mulligan
-    photo: null,
+    photoBgs: [],     // 사진 배경(여러 장). 각 원소 = dataURL
     photoBalls: [],   // 사진 공(여러 장). 각 원소 = dataURL
   };
   let store = JSON.parse(JSON.stringify(STORE_DEFAULT));
@@ -1038,7 +1038,8 @@
           sticks: parsed.sticks | 0,
           freezes: parsed.freezes | 0,
           items: (parsed.items && typeof parsed.items === 'object') ? parsed.items : {},
-          photo: parsed.photo || null,
+          photoBgs: Array.isArray(parsed.photoBgs) ? parsed.photoBgs
+                   : (parsed.photo ? [parsed.photo] : []),  // 구버전 단일 사진 배경 마이그레이션
           photoBalls: Array.isArray(parsed.photoBalls) ? parsed.photoBalls
                      : (parsed.photoBall ? [parsed.photoBall] : []), // 구버전 단일 사진 마이그레이션
         };
@@ -1048,6 +1049,10 @@
         const pbi = store.owned.skins.indexOf('photoBall');
         if (pbi >= 0) { store.owned.skins.splice(pbi, 1); if (store.photoBalls.length) store.owned.skins.push('photoBall:0'); }
         if (store.equipped.skin === 'photoBall') store.equipped.skin = store.photoBalls.length ? 'photoBall:0' : 'default';
+        // 구버전 'photo' 단일 배경 소유 → 'photo:0' 으로 변환
+        const pgi = store.owned.bgs.indexOf('photo');
+        if (pgi >= 0) { store.owned.bgs.splice(pgi, 1); if (store.photoBgs.length) store.owned.bgs.push('photo:0'); }
+        if (store.equipped.bg === 'photo') store.equipped.bg = store.photoBgs.length ? 'photo:0' : 'default';
       }
     } catch (e) { store = JSON.parse(JSON.stringify(STORE_DEFAULT)); }
   }
@@ -1056,7 +1061,7 @@
     try { localStorage.setItem('pung_store', JSON.stringify(store)); }
     catch (e) {
       // quota 초과: 사진 제거 후 1회 재시도
-      try { store.photo = null; store.photoBalls = []; localStorage.setItem('pung_store', JSON.stringify(store)); }
+      try { store.photoBgs = []; store.photoBalls = []; localStorage.setItem('pung_store', JSON.stringify(store)); }
       catch (e2) { /* 그래도 실패하면 포기(메모리에는 유지) */ }
     }
   }
@@ -1292,15 +1297,17 @@
   }
 
   // ================= 배경 (코드 3종 + 사진) =================
-  let photoImg = null;            // 사진 배경 캐시
-  function loadPhotoImage() {
-    photoImg = null;
-    if (!store.photo) return;
-    const img = new Image();
-    img.onload = () => { photoImg = img; };
-    img.src = store.photo;
+  const photoBgImgs = {};         // 인덱스 → Image 캐시(사진 배경 여러 장)
+  function loadPhotoImages() {
+    for (const k in photoBgImgs) delete photoBgImgs[k];
+    (store.photoBgs || []).forEach((url, i) => {
+      if (!url) return;
+      const img = new Image();
+      img.onload = () => { photoBgImgs[i] = img; };
+      img.src = url;
+    });
   }
-  loadPhotoImage();
+  loadPhotoImages();
 
   function bgDefault(c) { c.fillStyle = COL.bg; c.fillRect(-20, -20, W + 40, H + 40); }
   function bgSunset(c) {
@@ -1324,14 +1331,14 @@
       c.fillRect(sx, sy, sz, sz);
     }
   }
-  function bgPhoto(c) {
+  function drawPhotoBgIdx(c, idx) {
     bgDefault(c);
-    if (photoImg && photoImg.width) {
-      // cover 핏
-      const ir = photoImg.width / photoImg.height, sr = W / H;
+    const img = photoBgImgs[idx];
+    if (img && img.width) {
+      const ir = img.width / img.height, sr = W / H;
       let dw, dh;
       if (ir > sr) { dh = H; dw = H * ir; } else { dw = W; dh = W / ir; }
-      c.drawImage(photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      c.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
       c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(-20, -20, W + 40, H + 40); // 가독성 오버레이
     }
   }
@@ -1339,26 +1346,46 @@
     { id: 'default', name: '기본 다크', nameKey: 'bg_default', price: 0, render: bgDefault },
     { id: 'sunset', name: '노을', nameKey: 'bg_sunset', price: 40, render: bgSunset },
     { id: 'space', name: '우주', nameKey: 'bg_space', price: 40, render: bgSpace },
-    { id: 'photo', name: '내 사진', nameKey: 'bg_photo', price: 150, render: bgPhoto },
   ];
-  function bgById(id) { return BGS.find((b) => b.id === id) || BGS[0]; }
+  const PHOTO_BG_PRICE = 150;
+  function isPhotoBg(id) { return typeof id === 'string' && id.indexOf('photo:') === 0; }
+  function photoBgIndex(id) { return parseInt(id.split(':')[1], 10) || 0; }
+  function makePhotoBg(id) {
+    const idx = photoBgIndex(id);
+    return { id: id, nameKey: 'bg_photo', price: PHOTO_BG_PRICE, photo: true, idx: idx,
+      render: (c) => drawPhotoBgIdx(c, idx) };
+  }
+  function bgById(id) {
+    if (isPhotoBg(id)) return makePhotoBg(id);
+    return BGS.find((b) => b.id === id) || BGS[0];
+  }
 
   const STICK_PRICE = 50;
   const STICK_GIFT_EVERY = 10;    // 10판 깰 때마다 막대기 무료 지급(10·20·30…). 쉽게 바꿀 수 있게 상수로.
   let stickGiftFlash = false;     // 이번 트레이 렌더에서 새 막대기를 튀어오르게 할지
 
   // ---------- Web Audio (효과음용) ----------
-  let actx = null, masterGain = null;
+  let actx = null, masterGain = null, audioUnlocked = false;
   function ensureAudio() {
-    if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    actx = new AC();
-    masterGain = actx.createGain();
-    masterGain.gain.value = muted ? 0 : 0.9;
-    masterGain.connect(actx.destination);
-    if (actx.state === 'suspended') actx.resume(); // 모바일: 생성 직후 정지 상태면 깨움(제스처 내 호출)
-    loadSfx();
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = new AC();
+      masterGain = actx.createGain();
+      masterGain.gain.value = muted ? 0 : 0.9;
+      masterGain.connect(actx.destination);
+      loadSfx();
+    }
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    // iOS/모바일 잠금 해제: 무음 버퍼를 한 번 재생해야 오디오가 열린다(제스처 내 1회).
+    if (!audioUnlocked) {
+      try {
+        const buf = actx.createBuffer(1, 1, 22050);
+        const src = actx.createBufferSource();
+        src.buffer = buf; src.connect(actx.destination); src.start(0);
+        audioUnlocked = true;
+      } catch (e) { /* 무시 */ }
+    }
   }
   function setMasterMute() {
     if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
@@ -2744,6 +2771,7 @@
   }
 
   let pendingPhotoBallIdx = -1;   // 사진 선택 대기 중인 사진 공 슬롯
+  let pendingPhotoBgIdx = -1;     // 사진 선택 대기 중인 사진 배경 슬롯
   function renderSkinGrid() {
     elGridBalls.innerHTML = '';
     // 일반 스킨
@@ -2803,31 +2831,49 @@
   // photo는 업로드 자체는 무료, 배경으로 적용할 때 코인 차감.
   function renderBgGrid() {
     elGridBgs.innerHTML = '';
+    // 코드 배경(소모품: 적용 시 코인 차감, default 무료)
     for (const bg of BGS) {
       const equipped = store.equipped.bg === bg.id;
       const free = bg.price <= 0;
-      const prev = makePreviewCanvas((c, cw, ch) => {
-        // 배경 미리보기: 임시 W/H 컨텍스트 흉내 (render는 전역 W/H 사용하므로 직접 미니 렌더)
-        miniBgPreview(c, bg.id, cw, ch);
-      });
+      const prev = makePreviewCanvas((c, cw, ch) => miniBgPreview(c, bg.id, cw, ch));
       const card = buildBgCard(prev, t(bg.nameKey), equipped, free, bg.price, () => {
         if (equipped) return;
-        if (bg.id === 'photo') {
-          // 사진이 없으면 먼저 무료 업로드(적용은 사진 선택 후 다시 눌러 차감)
-          if (!store.photo) { elPhotoInput.click(); return; }
-          if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; }
-          store.equipped.bg = 'photo'; saveStore();
-        } else if (free) {
-          // 기본 다크: 무료로 되돌리기
-          store.equipped.bg = bg.id; saveStore();
-        } else {
-          if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; }
-          store.equipped.bg = bg.id; saveStore();
-        }
+        if (free) { store.equipped.bg = bg.id; saveStore(); }
+        else { if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; } store.equipped.bg = bg.id; saveStore(); }
         renderShop();
       });
       elGridBgs.appendChild(card);
     }
+    // 보유한 사진 배경(각각). 탭하면 장착(무료, 이미 구매했으므로) / 장착 상태면 사진 교체
+    (store.photoBgs || []).forEach((url, idx) => {
+      const id = 'photo:' + idx;
+      const equipped = store.equipped.bg === id;
+      const prev = makePreviewCanvas((c, cw, ch) => miniBgPreview(c, id, cw, ch));
+      const card = buildBgCard(prev, t('bg_photo') + ' ' + (idx + 1), equipped, true, 0, () => {
+        if (!equipped) { store.equipped.bg = id; saveStore(); }
+        else { pendingPhotoBgIdx = idx; elPhotoInput.click(); return; } // 장착 상태에서 다시 누르면 교체
+        renderShop();
+      });
+      elGridBgs.appendChild(card);
+    });
+    // 사진 배경 추가 카드(항상 한 장 더)
+    const addPrev = makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#2B2D35'; c.fillRect(0, 0, cw, ch);
+      c.fillStyle = '#9CA3AF'; c.font = '700 ' + Math.round(cw * 0.28) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('＋', cw / 2, ch / 2);
+    });
+    const addCard = buildBgCard(addPrev, t('bg_photo'), false, false, PHOTO_BG_PRICE, () => {
+      if (!spend(PHOTO_BG_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
+      const idx = (store.photoBgs || []).length;
+      store.photoBgs.push('');
+      store.owned.bgs.push('photo:' + idx);
+      saveStore();
+      store.equipped.bg = 'photo:' + idx; saveStore();
+      pendingPhotoBgIdx = idx;
+      elPhotoInput.click();
+      renderShop();
+    });
+    elGridBgs.appendChild(addCard);
   }
 
   // 배경 전용 카드: 소모품 규칙(적용 시 코인 차감). 버튼 라벨은 "적용 (가격 🪙)" / 무료는 "적용".
@@ -2865,9 +2911,10 @@
       c.fillStyle = g; c.fillRect(0, 0, cw, ch);
       c.fillStyle = '#FFFFFF';
       for (let i = 0; i < 20; i++) c.fillRect((i * 53 % 100) / 100 * cw, (i * 31 % 100) / 100 * ch, 1.5, 1.5);
-    } else if (id === 'photo') {
-      if (photoImg && photoImg.width) {
-        c.drawImage(photoImg, 0, 0, cw, ch);
+    } else if (isPhotoBg(id)) {
+      const img = photoBgImgs[photoBgIndex(id)];
+      if (img && img.width) {
+        c.drawImage(img, 0, 0, cw, ch);
       } else {
         c.fillStyle = '#2B2D35'; c.fillRect(0, 0, cw, ch);
         c.fillStyle = '#9CA3AF'; c.font = '600 13px ' + COL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -3205,14 +3252,17 @@
     reader.readAsDataURL(file);
   }
 
-  // 배경 사진: 화면비 사각형으로 크롭 → store.photo (적용 시 코인 차감)
+  // 배경 사진: 화면비 사각형으로 크롭 → store.photoBgs[pendingPhotoBgIdx]
   function onPhotoSelected(e) {
+    const idx = pendingPhotoBgIdx;
     loadFileToEditor(e, 'rect', W / H, (dataUrl) => {
-      store.photo = dataUrl;
+      if (idx < 0 || idx >= store.photoBgs.length) { pendingPhotoBgIdx = -1; return; }
+      store.photoBgs[idx] = dataUrl;
       saveStore();
-      if (!store.photo) { showShopMsg(t('photoTooBig')); }
-      else { showShopMsg(t('photoReadyBg')); }
-      loadPhotoImage();
+      if (!store.photoBgs[idx]) { showShopMsg(t('photoTooBig')); }
+      else { showShopMsg(t('ballPhotoApplied')); }
+      loadPhotoImages();
+      pendingPhotoBgIdx = -1;
       renderShop();
     });
   }
@@ -3232,18 +3282,28 @@
       renderSkinDock();
     });
   }
-  // 크롭 취소 시: 방금 추가한 빈 슬롯이면 정리
+  // 크롭 취소 시: 방금 추가한 빈 슬롯이면 정리(공·배경)
   function cancelPendingPhotoBall() {
-    const idx = pendingPhotoBallIdx;
-    if (idx >= 0 && store.photoBalls[idx] === '') {
-      store.photoBalls.splice(idx, 1);
-      const sid = 'photoBall:' + idx;
+    let bidx = pendingPhotoBallIdx;
+    if (bidx >= 0 && store.photoBalls[bidx] === '') {
+      store.photoBalls.splice(bidx, 1);
+      const sid = 'photoBall:' + bidx;
       const si = store.owned.skins.indexOf(sid);
       if (si >= 0) store.owned.skins.splice(si, 1);
       if (store.equipped.skin === sid) store.equipped.skin = 'default';
       saveStore(); loadPhotoBallImages(); renderShop(); renderSkinDock();
     }
     pendingPhotoBallIdx = -1;
+    let gidx = pendingPhotoBgIdx;
+    if (gidx >= 0 && store.photoBgs[gidx] === '') {
+      store.photoBgs.splice(gidx, 1);
+      const gid = 'photo:' + gidx;
+      const gi = store.owned.bgs.indexOf(gid);
+      if (gi >= 0) store.owned.bgs.splice(gi, 1);
+      if (store.equipped.bg === gid) store.equipped.bg = 'default';
+      saveStore(); loadPhotoImages(); renderShop();
+    }
+    pendingPhotoBgIdx = -1;
   }
 
   // ================= 스틱 트레이 (게임 중) =================
