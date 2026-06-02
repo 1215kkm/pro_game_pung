@@ -389,10 +389,12 @@
   <div class="shop-tabs">
     <button class="btn btn-ghost" id="tabBalls" aria-pressed="true" data-i18n="tabBalls">공 스킨</button>
     <button class="btn btn-ghost" id="tabBgs" aria-pressed="false" data-i18n="tabBgs">배경</button>
+    <button class="btn btn-ghost" id="tabSounds" aria-pressed="false" data-i18n="tabSounds">사운드</button>
     <button class="btn btn-ghost" id="tabItems" aria-pressed="false" data-i18n="tabItems">아이템</button>
   </div>
   <div class="shop-grid" id="gridBalls"></div>
   <div class="shop-grid hidden" id="gridBgs"></div>
+  <div class="shop-grid hidden" id="gridSounds"></div>
   <div class="shop-grid hidden" id="gridItems"></div>
   <button class="btn btn-primary" id="shopBack" data-i18n="close">닫기</button>
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
@@ -540,7 +542,19 @@
       tryAgain: '다시 도전',
       tabBalls: '공 스킨',
       tabBgs: '배경',
+      tabSounds: '사운드',
       tabItems: '아이템',
+      preview: '듣기',
+      snd_default: '기본 보잉', snd_scale: '음계 모드', snd_piano: '피아노', snd_star: '작은별',
+      snd_bell: '학교종', snd_marimba: '실로폰', snd_chip: '8비트', snd_droplet: '물방울',
+      sndInfo_default: '기본 튕김음.',
+      sndInfo_scale: '콤보마다 도레미파솔라시도 — 3옥타브 왕복.',
+      sndInfo_piano: '따뜻한 피아노 톤.',
+      sndInfo_star: '콤보로 반짝반짝 작은별 연주.',
+      sndInfo_bell: '콤보로 학교종 연주.',
+      sndInfo_marimba: '맑은 실로폰 음, 콤보로 음계 상승.',
+      sndInfo_chip: '레트로 8비트 사각파.',
+      sndInfo_droplet: '청량한 물방울 소리.',
       hudScore: '점수',
       hudCombo: '콤보',
       hudCoins: '코인',
@@ -650,7 +664,19 @@
       tryAgain: 'Try again',
       tabBalls: 'Balls',
       tabBgs: 'Backgrounds',
+      tabSounds: 'Sounds',
       tabItems: 'Items',
+      preview: 'Preview',
+      snd_default: 'Boing', snd_scale: 'Scale Climb', snd_piano: 'Piano', snd_star: 'Twinkle Star',
+      snd_bell: 'School Bell', snd_marimba: 'Marimba', snd_chip: 'Chiptune', snd_droplet: 'Droplet',
+      sndInfo_default: 'Default bounce sound.',
+      sndInfo_scale: 'Each combo plays Do-Re-Mi — 3 octaves up and down.',
+      sndInfo_piano: 'Warm piano tone.',
+      sndInfo_star: 'Combos play Twinkle Twinkle Little Star.',
+      sndInfo_bell: 'Combos play the School Bell tune.',
+      sndInfo_marimba: 'Clear marimba notes, rising with combo.',
+      sndInfo_chip: 'Retro 8-bit square wave.',
+      sndInfo_droplet: 'Crisp water-drop sound.',
       hudScore: 'Score',
       hudCombo: 'Combo',
       hudCoins: 'Coins',
@@ -795,9 +821,11 @@
   const elShopCoins = $('shopCoins');
   const elTabBalls = $('tabBalls');
   const elTabBgs = $('tabBgs');
+  const elTabSounds = $('tabSounds');
   const elTabItems = $('tabItems');
   const elGridBalls = $('gridBalls');
   const elGridBgs = $('gridBgs');
+  const elGridSounds = $('gridSounds');
   const elGridItems = $('gridItems');
   const elShopBack = $('shopBack');
   const elCredits = $('credits');
@@ -995,8 +1023,8 @@
 
   // ================= 스토어 모듈 (localStorage) =================
   const STORE_DEFAULT = {
-    owned: { skins: ['default'], bgs: ['default'], features: [] },
-    equipped: { skin: 'default', bg: 'default' },
+    owned: { skins: ['default'], bgs: ['default'], features: [], sounds: ['default'] },
+    equipped: { skin: 'default', bg: 'default', sound: 'default' },
     sticks: 0,
     freezes: 0,
     items: {},        // 소모품 개수: extraHeart/coinDouble/slowFog/scoreBoost/mulligan
@@ -1033,10 +1061,12 @@
             skins: (parsed.owned && Array.isArray(parsed.owned.skins)) ? parsed.owned.skins : ['default'],
             bgs: (parsed.owned && Array.isArray(parsed.owned.bgs)) ? parsed.owned.bgs : ['default'],
             features: (parsed.owned && Array.isArray(parsed.owned.features)) ? parsed.owned.features : [],
+            sounds: (parsed.owned && Array.isArray(parsed.owned.sounds)) ? parsed.owned.sounds : ['default'],
           },
           equipped: {
             skin: (parsed.equipped && parsed.equipped.skin) || 'default',
             bg: (parsed.equipped && parsed.equipped.bg) || 'default',
+            sound: (parsed.equipped && parsed.equipped.sound) || 'default',
           },
           sticks: parsed.sticks | 0,
           freezes: parsed.freezes | 0,
@@ -1048,6 +1078,7 @@
         };
         if (store.owned.skins.indexOf('default') < 0) store.owned.skins.push('default');
         if (store.owned.bgs.indexOf('default') < 0) store.owned.bgs.push('default');
+        if (store.owned.sounds.indexOf('default') < 0) store.owned.sounds.push('default');
         // 구버전 'photoBall' 단일 스킨 소유 → 'photoBall:0' 으로 변환
         const pbi = store.owned.skins.indexOf('photoBall');
         if (pbi >= 0) { store.owned.skins.splice(pbi, 1); if (store.photoBalls.length) store.owned.skins.push('photoBall:0'); }
@@ -1363,6 +1394,18 @@
     return BGS.find((b) => b.id === id) || BGS[0];
   }
 
+  // 사운드 테마 카탈로그(공 튕길 때 소리). default 무료. price 0 = 보유 기본.
+  const SOUNDS = [
+    { id: 'default', nameKey: 'snd_default', price: 0, emoji: '🔔' },
+    { id: 'scale',   nameKey: 'snd_scale',   price: 150, emoji: '🎵' }, // 도레미 왕복
+    { id: 'piano',   nameKey: 'snd_piano',   price: 120, emoji: '🎹' },
+    { id: 'star',    nameKey: 'snd_star',    price: 110, emoji: '⭐' }, // 반짝반짝 작은별
+    { id: 'bell',    nameKey: 'snd_bell',    price: 110, emoji: '🔔' }, // 학교종
+    { id: 'marimba', nameKey: 'snd_marimba', price: 100, emoji: '🪵' },
+    { id: 'chip',    nameKey: 'snd_chip',    price: 100, emoji: '👾' },
+    { id: 'droplet', nameKey: 'snd_droplet', price: 90,  emoji: '💧' },
+  ];
+
   const STICK_PRICE = 50;
   const STICK_GIFT_EVERY = 10;    // 10판 깰 때마다 막대기 무료 지급(10·20·30…). 쉽게 바꿀 수 있게 상수로.
   let stickGiftFlash = false;     // 이번 트레이 렌더에서 새 막대기를 튀어오르게 할지
@@ -1506,6 +1549,102 @@
     osc.connect(g); tail.connect(masterGain);
     osc.start(t); osc.stop(t + 0.45);
     cleanupOnEnd(osc, panner ? [g, panner] : [g]);
+  }
+
+  // ================= 사운드 테마 (공 튕길 때 소리) =================
+  // 음 하나 합성: 파형 + 옵션(배음·필터·릴리즈). 짧고 정리(onended)된다.
+  function synthNote(freq, pan, opts) {
+    if (!actx || muted) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    opts = opts || {};
+    const t = actx.currentTime;
+    const rel = opts.rel || 0.22, peak = opts.peak || 0.4, type = opts.type || 'triangle';
+    const o = actx.createOscillator(); o.type = type; o.frequency.value = freq;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + (opts.atk || 0.006));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + rel);
+    let head = o, nodes = [g];
+    if (opts.lp) { const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = opts.lp; o.connect(lp); lp.connect(g); nodes.push(lp); }
+    else { o.connect(g); }
+    let tail = g;
+    const panner = actx.createStereoPanner ? actx.createStereoPanner() : null;
+    if (panner) { panner.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(panner); tail = panner; nodes.push(panner); }
+    else { /* g already */ }
+    tail.connect(masterGain);
+    o.start(t); o.stop(t + rel + 0.05);
+    cleanupOnEnd(o, nodes);
+    // 옥타브 위 살짝(배음) — 두께
+    if (opts.oct) {
+      const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
+      const g2 = actx.createGain();
+      g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.exponentialRampToValueAtTime(peak * opts.oct, t + 0.006);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + rel * 0.8);
+      o2.connect(g2); g2.connect(masterGain); o2.start(t); o2.stop(t + rel);
+      cleanupOnEnd(o2, [g2]);
+    }
+  }
+  // 음정 유틸: C4 기준 반음(semitone) → 주파수
+  const C4 = 261.63;
+  function semi(n) { return C4 * Math.pow(2, n / 12); }
+  // 장음계(도레미파솔라시) 반음 간격
+  const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
+  function scaleFreq(degree) { // degree 0부터 도레미파솔라시도… 위로 무한
+    const oct = Math.floor(degree / 7), idx = ((degree % 7) + 7) % 7;
+    return semi(MAJOR_STEPS[idx] + 12 * oct);
+  }
+  // 콤보 → 3옥타브(21음) 왕복 인덱스(올라갔다 내려옴 반복)
+  function climbDegree(n) {
+    const span = 21;            // 0..21 (3옥타브 도까지)
+    const period = span * 2;    // 왕복 주기
+    const p = ((n % period) + period) % period;
+    return p <= span ? p : period - p;
+  }
+  // 동요 멜로디(반음, C4 기준). 콤보 순서대로 한 음씩.
+  const RHYME_STAR = [0,0,7,7,9,9,7, 5,5,4,4,2,2,0, 7,7,5,5,4,4,2, 7,7,5,5,4,4,2, 0,0,7,7,9,9,7, 5,5,4,4,2,2,0]; // 반짝반짝 작은별
+  const RHYME_BELL = [7,7,9,9,7,7,5, 7,7,5,5,4, 7,7,9,9,7,7,5, 7,5,4,5,2]; // 학교종
+  function playBounceSound(b, pan) {
+    const sound = store.equipped.sound || 'default';
+    const c = combo;            // 현재 콤보(0부터)
+    if (sound === 'scale') {
+      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'triangle', oct: 0.3, rel: 0.2 });
+    } else if (sound === 'piano') {
+      synthNote(bouncePitch(b), pan, { type: 'triangle', oct: 0.25, lp: 2600, rel: 0.45, peak: 0.42 });
+    } else if (sound === 'chip') {
+      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'square', rel: 0.14, peak: 0.32 });
+    } else if (sound === 'marimba') {
+      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'triangle', oct: 0.5, rel: 0.18, peak: 0.4 });
+    } else if (sound === 'droplet') {
+      dropletNote(pan);
+    } else if (sound === 'star') {
+      synthNote(semi(RHYME_STAR[c % RHYME_STAR.length]), pan, { type: 'triangle', oct: 0.3, rel: 0.26 });
+    } else if (sound === 'bell') {
+      synthNote(semi(RHYME_BELL[c % RHYME_BELL.length]), pan, { type: 'triangle', oct: 0.3, rel: 0.26 });
+    } else {
+      playBoing(bouncePitch(b), pan);   // 기본 보잉
+    }
+  }
+  function dropletNote(pan) {
+    if (!actx || muted) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    const t = actx.currentTime;
+    const o = actx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(1400, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.16);
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.42, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    let tail = g; const panner = actx.createStereoPanner ? actx.createStereoPanner() : null;
+    if (panner) { panner.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(panner); tail = panner; }
+    o.connect(g); tail.connect(masterGain); o.start(t); o.stop(t + 0.24);
+    cleanupOnEnd(o, panner ? [g, panner] : [g]);
+  }
+  // 상점 미리듣기용: 테마 한 음 재생(콤보 0 가정)
+  function previewSound(id) {
+    const saved = store.equipped.sound; store.equipped.sound = id;
+    const fakeBall = { vy: 600 };
+    playBounceSound(fakeBall, 0);
+    store.equipped.sound = saved;
   }
 
   // 터짐: 길고 시원한 화이트노이즈 스윕 + 상승 스파클 (0.6~0.9s 테일)
@@ -2003,7 +2142,7 @@
     if (combo > maxCombo) maxCombo = combo;
 
     const pan = (b.x / W) * 2 - 1;
-    playBoing(bouncePitch(b), pan);
+    playBounceSound(b, pan);   // 장착한 사운드 테마로 재생
 
     // 스와이프로 세게 친 경우: 강타 연출(파티클 + 진동 + 플래시)
     if (power > 0.45) {
@@ -2750,9 +2889,11 @@
   function showTab(which) {
     elGridBalls.classList.toggle('hidden', which !== 'balls');
     elGridBgs.classList.toggle('hidden', which !== 'bgs');
+    elGridSounds.classList.toggle('hidden', which !== 'sounds');
     elGridItems.classList.toggle('hidden', which !== 'items');
     elTabBalls.setAttribute('aria-pressed', String(which === 'balls'));
     elTabBgs.setAttribute('aria-pressed', String(which === 'bgs'));
+    elTabSounds.setAttribute('aria-pressed', String(which === 'sounds'));
     elTabItems.setAttribute('aria-pressed', String(which === 'items'));
   }
 
@@ -2760,6 +2901,7 @@
     elShopCoins.textContent = getCoins() + ' 🪙';
     renderSkinGrid();
     renderBgGrid();
+    renderSoundGrid();
     renderItemGrid();
     renderStickTray();
     renderSkinDock();
@@ -2942,6 +3084,46 @@
         c.fillStyle = '#9CA3AF'; c.font = '600 13px ' + COL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText(t('choosePhoto'), cw / 2, ch / 2);
       }
+    }
+  }
+
+  // 사운드 테마 카드: 미리듣기 + 구매/장착(스킨과 동일, 장착 1개)
+  function renderSoundGrid() {
+    elGridSounds.innerHTML = '';
+    for (const snd of SOUNDS) {
+      const owned = snd.price <= 0 || isOwned('sounds', snd.id);
+      const equipped = (store.equipped.sound || 'default') === snd.id;
+      const card = document.createElement('div'); card.className = 'shop-card item-card';
+      card.appendChild(emojiPreview(snd.emoji));
+      const body = document.createElement('div'); body.className = 'item-body';
+      const head = document.createElement('div'); head.className = 'item-head';
+      const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = t(snd.nameKey);
+      head.appendChild(nm); body.appendChild(head);
+      const desc = document.createElement('div'); desc.className = 'item-desc'; desc.textContent = t('sndInfo_' + snd.id);
+      body.appendChild(desc);
+      const row = document.createElement('div'); row.className = 'stick-buy-row';
+      // 미리듣기 버튼(항상)
+      const pv = document.createElement('button'); pv.className = 'btn btn-ghost';
+      pv.style.padding = '6px 12px'; pv.style.fontSize = '13px'; pv.style.minHeight = '34px';
+      pv.textContent = '▶ ' + t('preview');
+      pv.addEventListener('click', () => { ensureAudio(); previewSound(snd.id); });
+      row.appendChild(pv);
+      // 구매/장착 버튼
+      const btn = document.createElement('button');
+      btn.style.padding = '6px 12px'; btn.style.fontSize = '13px'; btn.style.minHeight = '34px';
+      if (equipped) { btn.className = 'btn btn-ghost'; btn.textContent = t('applied'); btn.disabled = true; }
+      else if (owned) { btn.className = 'btn btn-primary'; btn.textContent = t('equip');
+        btn.addEventListener('click', () => { store.equipped.sound = snd.id; saveStore(); renderShop(); }); }
+      else { btn.className = 'btn btn-primary'; btn.textContent = snd.price + ' 🪙';
+        if (getCoins() < snd.price) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+        btn.addEventListener('click', () => {
+          if (!buy('sounds', snd.id, snd.price)) { showShopMsg(t('notEnoughCoins')); return; }
+          store.equipped.sound = snd.id; saveStore(); renderShop();
+        }); }
+      row.appendChild(btn);
+      body.appendChild(row);
+      card.appendChild(body);
+      elGridSounds.appendChild(card);
     }
   }
 
@@ -3524,6 +3706,7 @@
   $('langToggle').addEventListener('click', function () { setLang(lang === 'ko' ? 'en' : 'ko'); });
   elTabBalls.addEventListener('click', () => showTab('balls'));
   elTabBgs.addEventListener('click', () => showTab('bgs'));
+  elTabSounds.addEventListener('click', () => showTab('sounds'));
   elTabItems.addEventListener('click', () => showTab('items'));
   elPhotoInput.addEventListener('change', onPhotoSelected);
   elPhotoBallInput.addEventListener('change', onPhotoBallSelected);
