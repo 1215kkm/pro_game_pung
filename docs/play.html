@@ -865,9 +865,9 @@
   // ----- 난이도: 속도 곡선 (선형 가속, 기존의 반 속도) -----
   const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
   const T_START = 3.0;            // 1판 왕복시간(초) — 아기도 할 만큼 느림
-  const T_END = 1.0;             // 30판 왕복시간(초) — 기존(0.5)의 반 속도
+  const T_END = 2.0;             // 30판 왕복시간(초) — 가속 폭을 또 반으로(3.0→2.0)
   const T_STEP = (T_START - T_END) / (TOTAL_STAGES - 1); // 판당 왕복시간 감소량(선형, 같은 범위)
-  const T_MASTER_MIN = 0.5;       // 마스터모드 왕복시간 하한(번개 방지)
+  const T_MASTER_MIN = 1.0;       // 마스터모드 왕복시간 하한(번개 방지)
   let gNow = 600, vNow = 800;     // 현재 판의 중력·발사속도(recomputeKinematics 갱신)
   let gUp = 600, gDown = 600;     // 마스터모드 상승/하강 분리 중력
   function recomputeKinematics() {
