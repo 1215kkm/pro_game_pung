@@ -911,6 +911,9 @@
   const SLOWFOG_SECONDS = 8;       // 느림보 안개 지속
   const SLOWFOG_FACTOR = 0.6;      // 낙하속도 비율
   const SCOREBOOST_SECONDS = 15;   // 점수 부스트 지속
+  const HIT_PAD = 36;              // 기본 터치 캐치 여유 반경
+  const MAGNET_PAD = 34;           // 자석 보정 추가 반경
+  let magnetRings = [];            // 자석 캐치 범위 표시(터치 시 잠깐): { x, y, r, age }
   // 런타임 상태(판/세션 중)
   let coinMult = 1;                // 2배 코인(이번 판) → 판 시작 시 1로
   let scoreMult = 1;               // 점수 부스트(시간)
@@ -1637,7 +1640,7 @@
     toastText = ''; toastTimer = 0; popsThisRun = 0;
     heartFx = 0; heartFxParticles = [];
     freezeTimer = 0; freezePicked = []; freezeReleaseQueue = [];
-    dragTrail = []; dragActive = false; lastMove = null; curPower = 0;
+    dragTrail = []; dragActive = false; lastMove = null; curPower = 0; magnetRings = [];
     paddle = null; activeSticks = 0;
     recomputeKinematics();
     balls = [];
@@ -1785,6 +1788,8 @@
     state = STATE.PLAYING;
     startMusic();
     lastTime = performance.now();
+    // 일시정지 중 상점에서 산 아이템·막대기·스킨을 즉시 반영
+    renderStickTray(); renderSkinDock(); renderFreezeBtn(); renderItemDock(); updateHud();
   }
 
   function updateHud() {
@@ -2041,6 +2046,7 @@
     if (!inZone) return;
     if (!isOwned('features', 'swipe')) power = 0; // 쓸어치기 미보유 시 항상 기본 탭
     const frozen = freezeTimer > 0;
+    const magnet = hasFeature('magnet');
     let target = null, bestD = Infinity;
     for (const b of balls) {
       if (b.entering) continue;
@@ -2048,11 +2054,14 @@
       if (!frozen && b.vy < -80) continue;          // 정지 중엔 올라가는 공도 선택 가능
       if (frozen && freezePicked.indexOf(b) >= 0) continue; // 이미 찜한 공 제외
       const d = Math.hypot(px - b.x, py - b.y);
-      const hitR = b.r + 36 + (hasFeature('magnet') ? 34 : 0); // 자석 보정: 캐치 판정 너그럽게
+      const hitR = b.r + HIT_PAD + (magnet ? MAGNET_PAD : 0); // 자석 보정: 캐치 판정 너그럽게
       if (d < hitR) { if (d < bestD) { bestD = d; target = b; } }
     }
     if (target) {
       if (hitSet) hitSet.add(target.id);
+      if (magnet) { // 자석 캐치 범위를 공 주변에 잠깐 표시
+        magnetRings.push({ x: target.x, y: target.y, r: target.r + HIT_PAD + MAGNET_PAD, age: 0 });
+      }
       if (frozen) {
         freezePicked.push(target);   // 정지 중: 찜만 해 둠(끝나면 순서대로 튕김)
         target.picked = true;        // 표시용 플래그
@@ -2258,6 +2267,11 @@
       dragTrail[i].age += dt;
       if (dragTrail[i].age > 0.35) dragTrail.splice(i, 1);
     }
+    // 자석 캐치 범위 링 페이드
+    for (let i = magnetRings.length - 1; i >= 0; i--) {
+      magnetRings[i].age += dt;
+      if (magnetRings[i].age > 0.5) magnetRings.splice(i, 1);
+    }
 
     if (fellCount > 0) {
       onBallLost();
@@ -2402,6 +2416,23 @@
   }
 
   // 드래그 궤적: 속도(power)가 빠를수록 굵고 노랗게 빛나는 꼬리
+  // 자석 캐치 범위: 터치한 공 주변에 점선 원이 잠깐 떴다 사라짐
+  function drawMagnetRings() {
+    if (!magnetRings.length) return;
+    ctx.save();
+    ctx.setLineDash([6, 6]);
+    for (const m of magnetRings) {
+      const a = Math.max(0, 1 - m.age / 0.5);
+      const r = m.r * (0.85 + 0.15 * (1 - a)); // 살짝 퍼지며
+      ctx.globalAlpha = a * 0.8;
+      ctx.lineWidth = 2.5; ctx.strokeStyle = COL.secondary;
+      ctx.shadowColor = hexToRgba(COL.secondary, 0.6); ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   function drawDragTrail() {
     if (dragTrail.length < 2) return;
     ctx.save();
@@ -2527,6 +2558,7 @@
         ctx.fillRect(-20, -20, W + 40, H + 40);
       }
       if (freezeTimer > 0) drawFreezeFx();
+      drawMagnetRings();
       drawDragTrail();
       drawHeartFx();
       drawToast();
