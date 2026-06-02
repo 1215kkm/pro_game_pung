@@ -79,17 +79,19 @@
     left: 0; right: 0; display: flex; flex-direction: column; align-items: center;
     gap: var(--spacing-xs); pointer-events: none; z-index: 5; font-variant-numeric: tabular-nums;
   }
+  /* 하트 줄(맨 위) — 최대 20개, 넘치면 줄바꿈. 작게. */
+  #hud .hearts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: 1px 2px; max-width: 92vw; font-size: 15px; line-height: 1.1; color: var(--primary); }
   #hud .stage-wrap { text-align: center; line-height: 1; }
-  #hud .stage-num { font-size: 64px; font-weight: 800; color: var(--text-primary);
+  #hud .stage-num { font-size: 52px; font-weight: 800; color: var(--text-primary);
     text-shadow: 0 2px 18px rgba(var(--primary-rgb), 0.45); }
-  #hud .stage-num .of { font-size: var(--font-lg); font-weight: 600; color: var(--text-secondary); }
+  #hud .stage-num .of { font-size: var(--font-md); font-weight: 600; color: var(--text-secondary); }
   #hud .stage-label { font-size: var(--font-sm); color: var(--text-secondary); letter-spacing: 2px; }
   #hud .substat { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--spacing-md) var(--spacing-lg); opacity: 0.8; }
   #hud .substat .stat { text-align: center; }
   #hud .substat .label { font-size: var(--font-sm); color: var(--text-secondary); display: block; line-height: 1.2; }
   #hud .substat .value { font-size: var(--font-lg); font-weight: 700; }
   #hud .substat #hudScore { color: var(--secondary); }
-  #hud .substat #hudLives { color: var(--primary); letter-spacing: 1px; }
   #hud .substat #hudCoins { color: var(--secondary); }
 
   /* ===== 오버레이 (메뉴·게임오버) ===== */
@@ -300,10 +302,7 @@
 <body>
 <canvas id="game"></canvas>
 
-<!-- 게임 중 좌상단 일시정지 -->
-<button class="corner-btn left hidden" id="pauseBtn" aria-label="일시정지">⏸</button>
-
-<!-- 시간정지 아이템(게임 중 우상단, 일시정지와 같은 높이) -->
+<!-- 시간정지 아이템(게임 중 우상단) -->
 <button class="corner-btn right hidden" id="freezeBtn" aria-label="시간정지">⏱<span class="badge" id="freezeBadge">0</span></button>
 
 <!-- 스틱 트레이(게임 중, 우측 하단) -->
@@ -313,6 +312,7 @@
 <div class="skin-dock hidden" id="skinDock"></div>
 
 <div id="hud" class="hidden" aria-hidden="true">
+  <div class="hearts" id="hudLives"></div>
   <div class="stage-wrap">
     <div class="stage-num"><span id="hudStage">1</span><span class="of" id="hudOf"> / 30판</span></div>
     <div class="stage-label">PUNG</div>
@@ -322,7 +322,6 @@
     <div class="stat"><span class="label" data-i18n="hudCombo">콤보</span><span class="value" id="hudCombo">0</span></div>
     <div class="stat"><span class="label" data-i18n="hudCoins">코인</span><span class="value" id="hudCoins">0</span></div>
     <div class="stat"><span class="label" data-i18n="hudBest">최고 도달</span><span class="value" id="hudBest">1</span></div>
-    <div class="stat"><span class="label" data-i18n="hudLives">생명</span><span class="value" id="hudLives"></span></div>
   </div>
 </div>
 
@@ -570,7 +569,10 @@
       stickInfo: (a) => '막대기는 떨어지는 공을 자동으로 받아줍니다. +1 / +3 / +5 로 한 번에 여러 개를 살 수 있어요(가격은 개당 ' + a.price + ' 🪙). 게임 중 우측 하단 막대기 아이콘(보유 개수가 배지로 표시)을 탭할 때마다 켜는 개수가 1씩 늘어 패들이 길어집니다. 보유수를 넘기면 꺼져요. 한 번에 최대 ' + a.max + '개까지 켤 수 있고, 막대당 3번 받으면 사라집니다.',
       freezeActivated: '시간정지!',
       freezeOwnedN: (a) => '시간정지 (보유 ' + a.n + ')',
-      freezeInfo: (a) => '시간정지는 ' + a.sec + '초 동안 모든 공을 멈춥니다. 게임 중 우상단 ⏱ 버튼으로 사용하세요(개당 ' + a.price + ' 🪙). 멈춘 동안 아래 터치 영역에서 공을 터치해 두면, 카운트가 끝날 때 터치한 공들이 한꺼번에 위로 튕깁니다.'
+      freezeInfo: (a) => '시간정지는 ' + a.sec + '초 동안 모든 공을 멈춥니다. 게임 중 우상단 ⏱ 버튼으로 사용하세요(개당 ' + a.price + ' 🪙). 멈춘 동안 아래 터치 영역에서 공을 터치해 두면, 카운트가 끝날 때 터치한 공들이 한꺼번에 위로 튕깁니다.',
+      owned: '보유중',
+      swipeName: '쓸어치기',
+      swipeInfo: '한 번 사면 영구! 공을 빠르게 쓸어치면(스와이프) 더 높이 튕깁니다. 천천히 치거나 탭하면 평소 높이. 손가락 궤적과 강타 효과가 표시됩니다.'
     },
     en: {
       title: 'Tunggling — Conquer 30',
@@ -661,7 +663,10 @@
       stickInfo: (a) => 'Sticks automatically catch falling balls. Buy several at once with +1 / +3 / +5 (' + a.price + ' 🪙 each). During play, tap the stick icon at the bottom-right (owned count shown as a badge) to turn on one more each tap, making the paddle longer. Tapping past your count turns it off. Up to ' + a.max + ' at once; each stick disappears after 3 catches.',
       freezeActivated: 'Time freeze!',
       freezeOwnedN: (a) => 'Freeze (own ' + a.n + ')',
-      freezeInfo: (a) => 'Freeze stops every ball for ' + a.sec + ' seconds. Use the ⏱ button at the top-right during play (' + a.price + ' 🪙 each). While frozen, tap balls in the lower touch zone; when the countdown ends, all tapped balls bounce up at once.'
+      freezeInfo: (a) => 'Freeze stops every ball for ' + a.sec + ' seconds. Use the ⏱ button at the top-right during play (' + a.price + ' 🪙 each). While frozen, tap balls in the lower touch zone; when the countdown ends, all tapped balls bounce up at once.',
+      owned: 'Owned',
+      swipeName: 'Swipe Hit',
+      swipeInfo: 'Buy once, keep forever! Swipe quickly across a ball to bounce it higher. A slow touch or tap gives the normal height. Shows a finger trail and strong-hit effect.'
     }
   };
   function t(key, a) { const tbl = I18N[lang] || I18N.ko; let d = tbl[key]; if (d == null) d = I18N.ko[key]; if (d == null) return key; return (typeof d === 'function') ? d(a) : d; }
@@ -744,7 +749,6 @@
   const elCropStyleRow = $('cropStyleRow');
   const elCropFlat = $('cropFlat');
   const elCropConvex = $('cropConvex');
-  const elPauseBtn = $('pauseBtn');
   const elFreezeBtn = $('freezeBtn');
   const elFreezeBadge = $('freezeBadge');
   const elGoShopBtn = $('goShopBtn');
@@ -791,7 +795,7 @@
 
   // ----- 30판 구조 + 무한 마스터모드 -----
   const TOTAL_STAGES = 30;
-  const LIVES_START = 3, LIVES_MAX = 5; // 하트(생명)
+  const LIVES_START = 3, LIVES_MAX = 20; // 하트(생명) — 최대 20
 
   // ----- 난이도: 속도 곡선 (대칭, 고정 정점, 가변 중력) -----
   const RISE_FRAC = 0.72;         // 정점 높이 = 화면의 72%
@@ -850,6 +854,7 @@
   let freezePicked = [];          // 정지 중 터치된 공들(끝나면 터치 순서·시간차대로 튕김)
   let freezeReleaseQueue = [];    // 정지 해제 후 지연 튕김 큐: { ball, delay }
   const FREEZE_PRICE = 40;
+  const SWIPE_PRICE = 90;   // 쓸어치기(영구)
   let flashAlpha = 0;
   let shake = 0;
   let lastTime = 0;
@@ -1580,7 +1585,6 @@
     elCheckpoint.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
-    elPauseBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
@@ -1593,7 +1597,6 @@
   function hidePlayChrome() {
     elHud.classList.add('hidden');
     elHud.setAttribute('aria-hidden', 'true');
-    elPauseBtn.classList.add('hidden');
     elStickTray.classList.add('hidden');
     elSkinDock.classList.add('hidden');
     elFreezeBtn.classList.add('hidden');
@@ -1647,7 +1650,6 @@
     elGameover.classList.add('hidden');
     elHud.classList.remove('hidden');
     elHud.setAttribute('aria-hidden', 'false');
-    elPauseBtn.classList.remove('hidden');
     renderStickTray();
     renderSkinDock();
     renderFreezeBtn();
@@ -1720,8 +1722,8 @@
     elHudBest.textContent = best;
     if (elHudOf) elHudOf.textContent = masterMode ? t('masterTag') : t('ofTotal');
     if (elHudLives) {
-      const n = Math.max(0, lives | 0);
-      elHudLives.textContent = '♥'.repeat(Math.min(n, LIVES_MAX)) + '♡'.repeat(Math.max(0, LIVES_MAX - n));
+      const n = Math.max(0, Math.min(LIVES_MAX, lives | 0));
+      elHudLives.textContent = '♥'.repeat(n);  // 보유한 하트만 표시(최대 20)
     }
   }
 
@@ -1957,6 +1959,7 @@
     if (state !== STATE.PLAYING) return;
     const inZone = py >= zoneTop();
     if (!inZone) return;
+    if (!isOwned('features', 'swipe')) power = 0; // 쓸어치기 미보유 시 항상 기본 탭
     const frozen = freezeTimer > 0;
     let target = null, bestD = Infinity;
     for (const b of balls) {
@@ -2001,6 +2004,8 @@
     if (state !== STATE.PLAYING) return;
     e.preventDefault();
     const pts = pointsFromEvent(e);
+    // 상단 비터치 영역(받는 존 위)을 탭하면 일시정지. 단 시간정지 중엔 제외.
+    if (pts.length && freezeTimer <= 0 && pts[0].y < zoneTop()) { pauseGame(); return; }
     // 패들이 있으면 하단 근처 터치는 패들 드래그
     if (paddle && pts.length) {
       const py = pts[0].y;
@@ -2030,7 +2035,7 @@
       const dtm = Math.max(1, now - lastMove.t) / 1000;
       const dist = Math.hypot(p.x - lastMove.x, p.y - lastMove.y);
       const speed = dist / dtm;
-      curPower = speedToPower(speed);
+      curPower = isOwned('features', 'swipe') ? speedToPower(speed) : 0; // 미보유 시 강타 없음
       // 궤적 점 추가(이동량 있을 때만)
       if (dist > 2) { dragTrail.push({ x: p.x, y: p.y, age: 0, power: curPower }); if (dragTrail.length > 22) dragTrail.shift(); }
     }
@@ -2795,6 +2800,41 @@
     finfo.className = 'shop-info';
     finfo.textContent = t('freezeInfo', { sec: FREEZE_SECONDS, price: FREEZE_PRICE });
     elGridItems.appendChild(finfo);
+
+    // 쓸어치기(영구) 카드
+    const swipeOwned = isOwned('features', 'swipe');
+    const sprev = makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+      c.strokeStyle = COL.secondary; c.lineWidth = 5; c.lineCap = 'round';
+      c.shadowColor = hexToRgba(COL.secondary, 0.7); c.shadowBlur = 10;
+      c.beginPath(); c.moveTo(cw * 0.28, ch * 0.7); c.quadraticCurveTo(cw * 0.5, ch * 0.2, cw * 0.74, ch * 0.5); c.stroke();
+      c.shadowBlur = 0; c.fillStyle = '#fff'; c.font = '700 ' + Math.round(cw * 0.2) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('↗', cw * 0.74, ch * 0.5);
+    });
+    const scard = document.createElement('div');
+    scard.className = 'shop-card';
+    scard.appendChild(sprev);
+    const snm = document.createElement('div'); snm.className = 'shop-name'; snm.textContent = t('swipeName');
+    scard.appendChild(snm);
+    const sbtn = document.createElement('button');
+    sbtn.className = 'btn ' + (swipeOwned ? 'btn-ghost' : 'btn-primary');
+    sbtn.style.padding = '8px 14px'; sbtn.style.fontSize = '14px'; sbtn.style.minHeight = '36px';
+    if (swipeOwned) { sbtn.textContent = t('owned'); sbtn.disabled = true; }
+    else {
+      sbtn.textContent = SWIPE_PRICE + ' 🪙';
+      if (getCoins() < SWIPE_PRICE) { sbtn.disabled = true; sbtn.classList.add('btn-disabled'); }
+      sbtn.addEventListener('click', () => {
+        if (!buy('features', 'swipe', SWIPE_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
+        renderShop();
+      });
+    }
+    scard.appendChild(sbtn);
+    elGridItems.appendChild(scard);
+
+    const sinfo = document.createElement('div');
+    sinfo.className = 'shop-info';
+    sinfo.textContent = t('swipeInfo');
+    elGridItems.appendChild(sinfo);
   }
 
   let shopMsgTimer = null;
@@ -3237,8 +3277,7 @@
   elCropApply.addEventListener('click', cropApply);
   elCropCancel.addEventListener('click', () => { cropHide(); cancelPendingPhotoBall(); });
 
-  // 일시정지
-  elPauseBtn.addEventListener('click', pauseGame);
+  // 일시정지(이어하기 버튼)
   elPauseResume.addEventListener('click', resumeGame);
   elPauseMenu.addEventListener('click', toMenu);
 
