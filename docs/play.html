@@ -913,7 +913,7 @@
     sticks: 0,
     freezes: 0,
     photo: null,
-    photoBall: null,
+    photoBalls: [],   // 사진 공(여러 장). 각 원소 = dataURL
   };
   let store = JSON.parse(JSON.stringify(STORE_DEFAULT));
   let coins = 0;
@@ -953,10 +953,15 @@
           sticks: parsed.sticks | 0,
           freezes: parsed.freezes | 0,
           photo: parsed.photo || null,
-          photoBall: parsed.photoBall || null,
+          photoBalls: Array.isArray(parsed.photoBalls) ? parsed.photoBalls
+                     : (parsed.photoBall ? [parsed.photoBall] : []), // 구버전 단일 사진 마이그레이션
         };
         if (store.owned.skins.indexOf('default') < 0) store.owned.skins.push('default');
         if (store.owned.bgs.indexOf('default') < 0) store.owned.bgs.push('default');
+        // 구버전 'photoBall' 단일 스킨 소유 → 'photoBall:0' 으로 변환
+        const pbi = store.owned.skins.indexOf('photoBall');
+        if (pbi >= 0) { store.owned.skins.splice(pbi, 1); if (store.photoBalls.length) store.owned.skins.push('photoBall:0'); }
+        if (store.equipped.skin === 'photoBall') store.equipped.skin = store.photoBalls.length ? 'photoBall:0' : 'default';
       }
     } catch (e) { store = JSON.parse(JSON.stringify(STORE_DEFAULT)); }
   }
@@ -965,7 +970,7 @@
     try { localStorage.setItem('pung_store', JSON.stringify(store)); }
     catch (e) {
       // quota 초과: 사진 제거 후 1회 재시도
-      try { store.photo = null; store.photoBall = null; localStorage.setItem('pung_store', JSON.stringify(store)); }
+      try { store.photo = null; store.photoBalls = []; localStorage.setItem('pung_store', JSON.stringify(store)); }
       catch (e2) { /* 그래도 실패하면 포기(메모리에는 유지) */ }
     }
   }
@@ -1144,30 +1149,31 @@
     c.closePath(); c.fill();
   }
 
-  // ----- 공 사진 스킨(원형 클립) -----
-  let photoBallImg = null;        // 공 사진 캐시(배경 photo 와 독립)
-  function loadPhotoBallImage() {
-    photoBallImg = null;
-    if (!store.photoBall) return;
-    const img = new Image();
-    img.onload = () => { photoBallImg = img; };
-    img.src = store.photoBall;
+  // ----- 공 사진 스킨(원형 클립, 여러 장) -----
+  const photoBallImgs = {};       // 인덱스 → Image 캐시
+  function loadPhotoBallImages() {
+    for (const k in photoBallImgs) delete photoBallImgs[k];
+    (store.photoBalls || []).forEach((url, i) => {
+      if (!url) return;
+      const img = new Image();
+      img.onload = () => { photoBallImgs[i] = img; };
+      img.src = url;
+    });
   }
-  loadPhotoBallImage();
+  loadPhotoBallImages();
 
-  function drawSkin_photoBall(c, x, y, r, phase) {
-    if (photoBallImg && photoBallImg.width) {
+  // 인덱스별 사진 공 그림 함수(클로저). idx 사진이 없으면 플레이스홀더.
+  function drawPhotoBallIdx(c, x, y, r, idx) {
+    const img = photoBallImgs[idx];
+    if (img && img.width) {
       c.save();
       c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.clip();
-      // cover 핏: 정사각 영역(2r×2r)을 채우게
-      const iw = photoBallImg.width, ih = photoBallImg.height;
-      const ir = iw / ih;
+      const iw = img.width, ih = img.height, ir = iw / ih;
       let dw, dh;
       if (ir > 1) { dh = r * 2; dw = dh * ir; } else { dw = r * 2; dh = dw / ir; }
-      c.drawImage(photoBallImg, x - dw / 2, y - dh / 2, dw, dh);
+      c.drawImage(img, x - dw / 2, y - dh / 2, dw, dh);
       c.restore();
     } else {
-      // 플레이스홀더: 회색 원 + 안내
       c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
       c.fillStyle = '#3A3C44'; c.fill();
       c.fillStyle = '#9CA3AF';
@@ -1184,9 +1190,20 @@
     { id: 'jupiter', name: '목성', nameKey: 'skin_jupiter', price: 60, draw: drawJupiterSkin },
     { id: 'saturn', name: '토성', nameKey: 'skin_saturn', price: 80, draw: drawSaturnSkin },
     { id: 'penguin', name: '펭귄', nameKey: 'skin_penguin', price: 100, draw: drawPenguinSkin },
-    { id: 'photoBall', name: '내 사진', nameKey: 'skin_photo', price: 120, draw: drawSkin_photoBall },
   ];
-  function skinById(id) { return SKINS.find((s) => s.id === id) || SKINS[0]; }
+  const PHOTO_BALL_PRICE = 120;
+  // 사진 공 스킨 id = 'photoBall:N'. 동적 스킨 객체를 만들어 준다.
+  function isPhotoSkin(id) { return typeof id === 'string' && id.indexOf('photoBall:') === 0; }
+  function photoSkinIndex(id) { return parseInt(id.split(':')[1], 10) || 0; }
+  function makePhotoSkin(id) {
+    const idx = photoSkinIndex(id);
+    return { id: id, nameKey: 'skin_photo', price: PHOTO_BALL_PRICE, photo: true, idx: idx,
+      draw: (c, x, y, r) => drawPhotoBallIdx(c, x, y, r, idx) };
+  }
+  function skinById(id) {
+    if (isPhotoSkin(id)) return makePhotoSkin(id);
+    return SKINS.find((s) => s.id === id) || SKINS[0];
+  }
 
   // ================= 배경 (코드 3종 + 사진) =================
   let photoImg = null;            // 사진 배경 캐시
@@ -2476,8 +2493,10 @@
     return card;
   }
 
+  let pendingPhotoBallIdx = -1;   // 사진 선택 대기 중인 사진 공 슬롯
   function renderSkinGrid() {
     elGridBalls.innerHTML = '';
+    // 일반 스킨
     for (const skin of SKINS) {
       const owned = isOwned('skins', skin.id);
       const equipped = store.equipped.skin === skin.id;
@@ -2486,24 +2505,6 @@
         skin.draw(c, cw / 2, ch / 2, cw * 0.36, 0.6);
       });
       const card = buildCard(prev, t(skin.nameKey), owned, equipped, skin.price, () => {
-        if (skin.id === 'photoBall') {
-          // 사진 공: 소유 전이면 구매 후, 사진 없으면 파일 선택부터
-          if (!owned) {
-            if (!buy('skins', skin.id, skin.price)) { showShopMsg(t('notEnoughCoins')); return; }
-            equip('skin', skin.id);
-            if (!store.photoBall) { elPhotoBallInput.click(); renderShop(); return; }
-          } else if (!store.photoBall) {
-            equip('skin', skin.id);
-            elPhotoBallInput.click(); renderShop(); return;
-          } else if (!equipped) {
-            equip('skin', skin.id);
-          } else {
-            // 이미 장착됨 → 사진 교체
-            elPhotoBallInput.click(); return;
-          }
-          renderShop();
-          return;
-        }
         if (equipped) return;
         if (owned) { equip('skin', skin.id); }
         else { if (!buy('skins', skin.id, skin.price)) { showShopMsg(t('notEnoughCoins')); return; } equip('skin', skin.id); }
@@ -2511,6 +2512,41 @@
       });
       elGridBalls.appendChild(card);
     }
+    // 보유한 사진 공들(각각 카드) — 탭하면 장착/사진 교체
+    (store.photoBalls || []).forEach((url, idx) => {
+      const id = 'photoBall:' + idx;
+      const equipped = store.equipped.skin === id;
+      const prev = makePreviewCanvas((c, cw, ch) => {
+        c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+        drawPhotoBallIdx(c, cw / 2, ch / 2, cw * 0.36, idx);
+      });
+      const card = buildCard(prev, t('skin_photo') + ' ' + (idx + 1), true, equipped, 0, () => {
+        if (!equipped) { equip('skin', id); }
+        else { pendingPhotoBallIdx = idx; elPhotoBallInput.click(); return; } // 장착 상태에서 다시 누르면 교체
+        renderShop();
+      });
+      elGridBalls.appendChild(card);
+    });
+    // 사진 공 추가 카드(항상 한 장 더 살 수 있게)
+    const addPrev = makePreviewCanvas((c, cw, ch) => {
+      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
+      c.beginPath(); c.arc(cw / 2, ch / 2, cw * 0.36, 0, Math.PI * 2);
+      c.fillStyle = '#3A3C44'; c.fill();
+      c.fillStyle = '#9CA3AF'; c.font = '700 ' + Math.round(cw * 0.32) + 'px ' + COL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('＋', cw / 2, ch / 2);
+    });
+    const addCard = buildCard(addPrev, t('skin_photo'), false, false, PHOTO_BALL_PRICE, () => {
+      if (!spend(PHOTO_BALL_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
+      const idx = (store.photoBalls || []).length;
+      store.photoBalls.push('');                 // 빈 슬롯 추가
+      store.owned.skins.push('photoBall:' + idx);
+      saveStore();
+      equip('skin', 'photoBall:' + idx);
+      pendingPhotoBallIdx = idx;                 // 사진 선택 대기
+      elPhotoBallInput.click();
+      renderShop();
+    });
+    elGridBalls.appendChild(addCard);
   }
 
   // 배경은 소모품: 적용(장착)할 때마다 가격만큼 코인 차감. default(가격 0)은 무료.
@@ -2898,16 +2934,33 @@
     });
   }
 
-  // 공 사진: 원형(정사각) 크롭 → store.photoBall
+  // 공 사진: 원형(정사각) 크롭 → store.photoBalls[pendingPhotoBallIdx]
   function onPhotoBallSelected(e) {
+    const idx = pendingPhotoBallIdx;
     loadFileToEditor(e, 'circle', 1, (dataUrl) => {
-      store.photoBall = dataUrl;
+      if (idx < 0 || idx >= store.photoBalls.length) { pendingPhotoBallIdx = -1; return; }
+      store.photoBalls[idx] = dataUrl;
       saveStore();
-      if (!store.photoBall) { showShopMsg(t('photoTooBig')); }
+      if (!store.photoBalls[idx]) { showShopMsg(t('photoTooBig')); }
       else { showShopMsg(t('ballPhotoApplied')); }
-      loadPhotoBallImage();
+      loadPhotoBallImages();
+      pendingPhotoBallIdx = -1;
       renderShop();
+      renderSkinDock();
     });
+  }
+  // 크롭 취소 시: 방금 추가한 빈 슬롯이면 정리
+  function cancelPendingPhotoBall() {
+    const idx = pendingPhotoBallIdx;
+    if (idx >= 0 && store.photoBalls[idx] === '') {
+      store.photoBalls.splice(idx, 1);
+      const sid = 'photoBall:' + idx;
+      const si = store.owned.skins.indexOf(sid);
+      if (si >= 0) store.owned.skins.splice(si, 1);
+      if (store.equipped.skin === sid) store.equipped.skin = 'default';
+      saveStore(); loadPhotoBallImages(); renderShop(); renderSkinDock();
+    }
+    pendingPhotoBallIdx = -1;
   }
 
   // ================= 스틱 트레이 (게임 중) =================
@@ -2941,6 +2994,8 @@
   function renderSkinDock() {
     const inPlay = (state === STATE.PLAYING || state === STATE.PAUSED || state === STATE.CHECKPOINT);
     const owned = SKINS.filter((s) => isOwned('skins', s.id));
+    // 보유한 사진 공(사진이 실제로 들어있는 슬롯만)
+    (store.photoBalls || []).forEach((url, idx) => { if (url) owned.push(makePhotoSkin('photoBall:' + idx)); });
     if (!inPlay || owned.length <= 1) { elSkinDock.classList.add('hidden'); return; } // 1개뿐이면 숨김
     elSkinDock.classList.remove('hidden');
     elSkinDock.innerHTML = '';
@@ -3088,7 +3143,7 @@
   elCropFlat.addEventListener('click', () => { cropStyle = 'flat'; cropSetStyleBtns(); cropDraw(); });
   elCropConvex.addEventListener('click', () => { cropStyle = 'convex'; cropSetStyleBtns(); cropDraw(); });
   elCropApply.addEventListener('click', cropApply);
-  elCropCancel.addEventListener('click', cropHide);
+  elCropCancel.addEventListener('click', () => { cropHide(); cancelPendingPhotoBall(); });
 
   // 일시정지
   elPauseBtn.addEventListener('click', pauseGame);
