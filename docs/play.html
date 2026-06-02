@@ -267,6 +267,15 @@
   .shop-name { font-size: var(--font-sm); font-weight: 600; text-align: center; }
   .shop-info { grid-column: 1 / -1; font-size: var(--font-sm); color: var(--text-secondary);
     line-height: 1.5; text-align: left; }
+  /* 아이템 카드: 썸네일 왼쪽 + 설명/버튼 오른쪽(가로형, 한 줄 전체 폭) */
+  .item-card { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--spacing-md);
+    text-align: left; }
+  .item-card .shop-prev { width: 60px; height: 60px; flex: 0 0 auto; }
+  .item-card .item-body { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+  .item-card .item-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .item-card .shop-name { text-align: left; }
+  .item-card .item-desc { font-size: var(--font-xs, 12px); color: var(--text-secondary); line-height: 1.4; }
+  .item-card .stick-buy-row { justify-content: flex-start; }
   .stick-buy-row { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; justify-content: center; width: 100%; }
   .stick-buy-row .btn { flex: 1; min-width: 72px; }
   .btn-disabled, .btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -596,17 +605,20 @@
       owned: '보유중',
       swipeName: '쓸어치기',
       swipeInfo: '한 번 사면 영구! 공을 빠르게 쓸어치면(스와이프) 더 높이 튕깁니다. 천천히 치거나 탭하면 평소 높이. 손가락 궤적과 강타 효과가 표시됩니다.',
+      stickInfoShort: '하단 패들로 공 자동 받기. 막당 3회.',
+      freezeInfoShort: '발동 시 3초간 모든 공 정지.',
+      swipeInfoShort: '영구 · 빠르게 쓸면 더 높이 튕김.',
       item_extraHeart: '목숨 한 칸', item_coinDouble: '2배 코인', item_slowFog: '느림보 안개',
       item_scoreBoost: '점수 부스트', item_mulligan: '첫 실수 면제',
       item_magnet: '자석 보정', item_comboBlaze: '콤보 불꽃', item_heartRegen: '하트 자동회복',
-      itemInfo_extraHeart: '게임오버 직전 하트 1개를 자동으로 되살립니다(자동 발동, 1회 소모).',
-      itemInfo_coinDouble: '게임 중 버튼으로 발동 → 이번 판 동안 터짐 코인 2배. 다음 판이 시작되면 사라집니다.',
-      itemInfo_slowFog: '게임 중 버튼으로 발동 → 8초간 모든 공이 느리게 떨어집니다(시간정지보다 약하지만 길게).',
-      itemInfo_scoreBoost: '게임 중 버튼으로 발동 → 15초간 점수 2배.',
-      itemInfo_mulligan: '매 판 첫 낙하 1회는 하트가 깎이지 않습니다(판마다 자동, 1회 소모).',
-      itemInfo_magnet: '영구. 캐치 판정이 너그러워져 공을 더 쉽게 받습니다.',
-      itemInfo_comboBlaze: '영구. 안 떨어뜨리고 연속 성공할수록 터짐 코인 보너스가 늘어납니다(낙하 시 리셋).',
-      itemInfo_heartRegen: '영구. 5판 클리어할 때마다 하트가 1개 자동 충전됩니다.',
+      itemInfo_extraHeart: '게임오버 직전 하트 1개 자동 부활.',
+      itemInfo_coinDouble: '발동 시 이번 판 코인 2배.',
+      itemInfo_slowFog: '발동 시 8초간 공이 느리게.',
+      itemInfo_scoreBoost: '발동 시 15초간 점수 2배.',
+      itemInfo_mulligan: '매 판 첫 낙하는 하트 안 깎임.',
+      itemInfo_magnet: '영구 · 캐치 범위가 넓어짐.',
+      itemInfo_comboBlaze: '영구 · 연속 성공할수록 코인 보너스.',
+      itemInfo_heartRegen: '영구 · 5판마다 하트 +1.',
       coinDoubleOn: '코인 2배!', slowFogOn: '느림보 안개!', scoreBoostOn: '점수 2배!',
       mulliganUsed: '첫 실수 면제!', extraHeartUsed: '부활! ❤️'
     },
@@ -703,17 +715,20 @@
       owned: 'Owned',
       swipeName: 'Swipe Hit',
       swipeInfo: 'Buy once, keep forever! Swipe quickly across a ball to bounce it higher. A slow touch or tap gives the normal height. Shows a finger trail and strong-hit effect.',
+      stickInfoShort: 'Bottom paddle auto-catches. 3 per stick.',
+      freezeInfoShort: 'Activate → freeze all balls for 3s.',
+      swipeInfoShort: 'Permanent · swipe fast = higher bounce.',
       item_extraHeart: 'Extra Heart', item_coinDouble: 'Coin Doubler', item_slowFog: 'Slow Fog',
       item_scoreBoost: 'Score Surge', item_mulligan: 'Mulligan',
       item_magnet: 'Magnet Aim', item_comboBlaze: 'Combo Blaze', item_heartRegen: 'Heart Regen',
-      itemInfo_extraHeart: 'Automatically revives 1 heart right before game over (auto, consumes 1).',
-      itemInfo_coinDouble: 'Tap the in-game button to activate → double pop-coins for this stage. Clears when the next stage starts.',
-      itemInfo_slowFog: 'Tap the in-game button → all balls fall slower for 8s (weaker than freeze, but longer).',
-      itemInfo_scoreBoost: 'Tap the in-game button → double score for 15s.',
-      itemInfo_mulligan: 'The first drop of each stage costs no heart (auto each stage, consumes 1).',
-      itemInfo_magnet: 'Permanent. Wider catch window — catch balls more easily.',
-      itemInfo_comboBlaze: 'Permanent. The longer your no-drop streak, the bigger the pop-coin bonus (resets on drop).',
-      itemInfo_heartRegen: 'Permanent. Refills 1 heart every 5 stages cleared.',
+      itemInfo_extraHeart: 'Auto-revive 1 heart before game over.',
+      itemInfo_coinDouble: 'Activate → double coins this stage.',
+      itemInfo_slowFog: 'Activate → balls fall slower for 8s.',
+      itemInfo_scoreBoost: 'Activate → double score for 15s.',
+      itemInfo_mulligan: 'First drop each stage costs no heart.',
+      itemInfo_magnet: 'Permanent · wider catch window.',
+      itemInfo_comboBlaze: 'Permanent · streak grows coin bonus.',
+      itemInfo_heartRegen: 'Permanent · +1 heart every 5 stages.',
       coinDoubleOn: 'Coins x2!', slowFogOn: 'Slow fog!', scoreBoostOn: 'Score x2!',
       mulliganUsed: 'Mulligan!', extraHeartUsed: 'Revived! ❤️'
     }
@@ -1342,6 +1357,7 @@
     masterGain = actx.createGain();
     masterGain.gain.value = muted ? 0 : 0.9;
     masterGain.connect(actx.destination);
+    if (actx.state === 'suspended') actx.resume(); // 모바일: 생성 직후 정지 상태면 깨움(제스처 내 호출)
     loadSfx();
   }
   function setMasterMute() {
@@ -2862,86 +2878,26 @@
 
   function renderItemGrid() {
     elGridItems.innerHTML = '';
-    // 막대기 카드
-    const prev = makePreviewCanvas((c, cw, ch) => {
+    // 막대기 카드(가로형: 썸네일 + 본문)
+    const stickPrev = makePreviewCanvas((c, cw, ch) => {
       c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
       const g = c.createLinearGradient(0, ch / 2 - 12, 0, ch / 2 + 12);
       g.addColorStop(0, SHADE.stick); g.addColorStop(1, SHADE.stickDark);
       c.fillStyle = g;
       roundRect(c, cw * 0.12, ch / 2 - 9, cw * 0.76, 18, 9); c.fill();
     });
-    const card = document.createElement('div');
-    card.className = 'shop-card';
-    card.appendChild(prev);
-    const nm = document.createElement('div'); nm.className = 'shop-name';
-    nm.textContent = t('stickOwnedN', { n: store.sticks });
-    card.appendChild(nm);
-    // 수량 구매 버튼 3개: +1 / +3 / +5 (각각 가격*수량 spend)
-    const btnRow = document.createElement('div');
-    btnRow.className = 'stick-buy-row';
-    [1, 3, 5].forEach((qty) => {
-      const cost = STICK_PRICE * qty;
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-primary';
-      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
-      btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
-      if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
-      btn.addEventListener('click', () => {
-        if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
-        store.sticks += qty; saveStore();
-        renderShop();
-      });
-      btnRow.appendChild(btn);
+    qtyItemCard(stickPrev, t('stickOwnedN', { n: store.sticks }), t('stickInfoShort'), STICK_PRICE, (qty) => {
+      store.sticks += qty; saveStore(); renderShop();
     });
-    card.appendChild(btnRow);
-    elGridItems.appendChild(card);
-
-    // 안내(막대기)
-    const info = document.createElement('div');
-    info.className = 'shop-info';
-    info.textContent = t('stickInfo', { price: STICK_PRICE, max: STICK_MAX_ICONS });
-    elGridItems.appendChild(info);
 
     // 시간정지 카드
-    const fprev = makePreviewCanvas((c, cw, ch) => {
-      c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
-      c.font = '700 ' + Math.round(cw * 0.5) + 'px ' + COL_FONT;
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText('⏱', cw / 2, ch / 2);
+    const freezePrev = emojiPreview('⏱');
+    qtyItemCard(freezePrev, t('freezeOwnedN', { n: store.freezes }), t('freezeInfoShort'), FREEZE_PRICE, (qty) => {
+      store.freezes += qty; saveStore(); renderShop(); renderFreezeBtn();
     });
-    const fcard = document.createElement('div');
-    fcard.className = 'shop-card';
-    fcard.appendChild(fprev);
-    const fnm = document.createElement('div'); fnm.className = 'shop-name';
-    fnm.textContent = t('freezeOwnedN', { n: store.freezes });
-    fcard.appendChild(fnm);
-    const fRow = document.createElement('div');
-    fRow.className = 'stick-buy-row';
-    [1, 3, 5].forEach((qty) => {
-      const cost = FREEZE_PRICE * qty;
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-primary';
-      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
-      btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
-      if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
-      btn.addEventListener('click', () => {
-        if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
-        store.freezes += qty; saveStore();
-        renderShop(); renderFreezeBtn();
-      });
-      fRow.appendChild(btn);
-    });
-    fcard.appendChild(fRow);
-    elGridItems.appendChild(fcard);
 
-    const finfo = document.createElement('div');
-    finfo.className = 'shop-info';
-    finfo.textContent = t('freezeInfo', { sec: FREEZE_SECONDS, price: FREEZE_PRICE });
-    elGridItems.appendChild(finfo);
-
-    // 쓸어치기(영구) 카드
-    const swipeOwned = isOwned('features', 'swipe');
-    const sprev = makePreviewCanvas((c, cw, ch) => {
+    // 쓸어치기(영구)
+    const swipePrev = makePreviewCanvas((c, cw, ch) => {
       c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch);
       c.strokeStyle = COL.secondary; c.lineWidth = 5; c.lineCap = 'round';
       c.shadowColor = hexToRgba(COL.secondary, 0.7); c.shadowBlur = 10;
@@ -2949,30 +2905,7 @@
       c.shadowBlur = 0; c.fillStyle = '#fff'; c.font = '700 ' + Math.round(cw * 0.2) + 'px ' + COL_FONT;
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('↗', cw * 0.74, ch * 0.5);
     });
-    const scard = document.createElement('div');
-    scard.className = 'shop-card';
-    scard.appendChild(sprev);
-    const snm = document.createElement('div'); snm.className = 'shop-name'; snm.textContent = t('swipeName');
-    scard.appendChild(snm);
-    const sbtn = document.createElement('button');
-    sbtn.className = 'btn ' + (swipeOwned ? 'btn-ghost' : 'btn-primary');
-    sbtn.style.padding = '8px 14px'; sbtn.style.fontSize = '14px'; sbtn.style.minHeight = '36px';
-    if (swipeOwned) { sbtn.textContent = t('owned'); sbtn.disabled = true; }
-    else {
-      sbtn.textContent = SWIPE_PRICE + ' 🪙';
-      if (getCoins() < SWIPE_PRICE) { sbtn.disabled = true; sbtn.classList.add('btn-disabled'); }
-      sbtn.addEventListener('click', () => {
-        if (!buy('features', 'swipe', SWIPE_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
-        renderShop();
-      });
-    }
-    scard.appendChild(sbtn);
-    elGridItems.appendChild(scard);
-
-    const sinfo = document.createElement('div');
-    sinfo.className = 'shop-info';
-    sinfo.textContent = t('swipeInfo');
-    elGridItems.appendChild(sinfo);
+    permanentCardPrev(swipePrev, 'swipe', t('swipeName'), t('swipeInfoShort'), SWIPE_PRICE);
 
     // ===== 신규 아이템 =====
     // 소모품(개수 구매): +1/+3/+5
@@ -2995,41 +2928,51 @@
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(emoji, cw / 2, ch / 2);
     });
   }
-  // 소모품 카드(+1/+3/+5 수량 구매)
-  function consumableCard(id, emoji, unit) {
-    const card = document.createElement('div'); card.className = 'shop-card';
-    card.appendChild(emojiPreview(emoji));
-    const nm = document.createElement('div'); nm.className = 'shop-name';
-    nm.textContent = t('item_' + id) + ' (' + itemCount(id) + ')';
-    card.appendChild(nm);
+  // 아이템 카드 뼈대: 썸네일(왼쪽) + 본문(이름·설명·버튼, 오른쪽). prev = 캔버스 or 이모지 문자열
+  function itemCardShell(prev, nameText, descText) {
+    const card = document.createElement('div'); card.className = 'shop-card item-card';
+    card.appendChild(typeof prev === 'string' ? emojiPreview(prev) : prev);
+    const body = document.createElement('div'); body.className = 'item-body';
+    const head = document.createElement('div'); head.className = 'item-head';
+    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = nameText;
+    head.appendChild(nm); body.appendChild(head);
+    const desc = document.createElement('div'); desc.className = 'item-desc'; desc.textContent = descText;
+    body.appendChild(desc);
+    card.appendChild(body);
+    elGridItems.appendChild(card);
+    return body;
+  }
+  // 수량 구매(+1/+3/+5) 공용 카드: 막대기·시간정지·소모품 모두 사용
+  function qtyItemCard(prev, nameText, descText, unit, onBuy) {
+    const body = itemCardShell(prev, nameText, descText);
     const row = document.createElement('div'); row.className = 'stick-buy-row';
     [1, 3, 5].forEach((qty) => {
       const cost = unit * qty;
       const btn = document.createElement('button'); btn.className = 'btn btn-primary';
-      btn.style.padding = '8px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '36px';
+      btn.style.padding = '6px 10px'; btn.style.fontSize = '13px'; btn.style.minHeight = '34px';
       btn.textContent = '+' + qty + ' (' + cost + ' 🪙)';
       if (getCoins() < cost) { btn.disabled = true; btn.classList.add('btn-disabled'); }
       btn.addEventListener('click', () => {
         if (!spend(cost)) { showShopMsg(t('notEnoughCoins')); return; }
-        addItem(id, qty); renderShop();
+        onBuy(qty);
       });
       row.appendChild(btn);
     });
-    card.appendChild(row);
-    elGridItems.appendChild(card);
-    const info = document.createElement('div'); info.className = 'shop-info'; info.textContent = t('itemInfo_' + id);
-    elGridItems.appendChild(info);
+    body.appendChild(row);
   }
-  // 영구 카드(한 번 구매)
-  function permanentCard(id, emoji, price) {
+  // 소모품 카드(+1/+3/+5)
+  function consumableCard(id, emoji, unit) {
+    qtyItemCard(emoji, t('item_' + id) + ' (' + itemCount(id) + ')', t('itemInfo_' + id), unit, (qty) => {
+      addItem(id, qty); renderShop();
+    });
+  }
+  // 영구 카드(한 번 구매) — 프리뷰 캔버스 버전
+  function permanentCardPrev(prev, id, nameText, descText, price) {
     const owned = isOwned('features', id);
-    const card = document.createElement('div'); card.className = 'shop-card';
-    card.appendChild(emojiPreview(emoji));
-    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = t('item_' + id);
-    card.appendChild(nm);
+    const body = itemCardShell(prev, nameText, descText);
     const btn = document.createElement('button');
     btn.className = 'btn ' + (owned ? 'btn-ghost' : 'btn-primary');
-    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
+    btn.style.padding = '6px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '34px'; btn.style.alignSelf = 'flex-start';
     if (owned) { btn.textContent = t('owned'); btn.disabled = true; }
     else {
       btn.textContent = price + ' 🪙';
@@ -3039,10 +2982,11 @@
         renderShop();
       });
     }
-    card.appendChild(btn);
-    elGridItems.appendChild(card);
-    const info = document.createElement('div'); info.className = 'shop-info'; info.textContent = t('itemInfo_' + id);
-    elGridItems.appendChild(info);
+    body.appendChild(btn);
+  }
+  // 영구 카드(이모지 버전)
+  function permanentCard(id, emoji, price) {
+    permanentCardPrev(emoji, id, t('item_' + id), t('itemInfo_' + id), price);
   }
 
   let shopMsgTimer = null;
