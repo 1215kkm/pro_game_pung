@@ -545,15 +545,26 @@
       tabSounds: '사운드',
       tabItems: '아이템',
       preview: '듣기',
-      snd_default: '기본 보잉', snd_scale: '음계 모드', snd_piano: '피아노', snd_star: '작은별',
-      snd_bell: '학교종', snd_marimba: '실로폰', snd_chip: '8비트', snd_droplet: '물방울',
+      snd_default: '기본 보잉', snd_scale: '음계 모드', snd_piano: '피아노', snd_cosmos: '우주',
+      snd_star: '작은별', snd_bell: '학교종', snd_butterfly: '나비야', snd_bear: '곰 세마리',
+      snd_plane: '비행기', snd_same: '모두 다 꽃이야', snd_bird: '산토끼', snd_birthday: '생일 축하',
+      snd_marimba: '실로폰', snd_chip: '8비트', snd_drum: '타악기', snd_firework: '불꽃놀이', snd_droplet: '물방울',
       sndInfo_default: '기본 튕김음.',
       sndInfo_scale: '콤보마다 도레미파솔라시도 — 3옥타브 왕복.',
       sndInfo_piano: '따뜻한 피아노 톤.',
+      sndInfo_cosmos: '몽환적인 우주 신스, 긴 여운.',
       sndInfo_star: '콤보로 반짝반짝 작은별 연주.',
       sndInfo_bell: '콤보로 학교종 연주.',
+      sndInfo_butterfly: '콤보로 나비야 연주.',
+      sndInfo_bear: '콤보로 곰 세마리 연주.',
+      sndInfo_plane: '콤보로 비행기 연주.',
+      sndInfo_same: '콤보로 모두 다 꽃이야 연주.',
+      sndInfo_bird: '콤보로 산토끼 연주.',
+      sndInfo_birthday: '콤보로 생일 축하 연주.',
       sndInfo_marimba: '맑은 실로폰 음, 콤보로 음계 상승.',
       sndInfo_chip: '레트로 8비트 사각파.',
+      sndInfo_drum: '타악기 노이즈 타격음.',
+      sndInfo_firework: '폭죽 사운드, 콤보 10마다 화음 폭발.',
       sndInfo_droplet: '청량한 물방울 소리.',
       hudScore: '점수',
       hudCombo: '콤보',
@@ -667,15 +678,26 @@
       tabSounds: 'Sounds',
       tabItems: 'Items',
       preview: 'Preview',
-      snd_default: 'Boing', snd_scale: 'Scale Climb', snd_piano: 'Piano', snd_star: 'Twinkle Star',
-      snd_bell: 'School Bell', snd_marimba: 'Marimba', snd_chip: 'Chiptune', snd_droplet: 'Droplet',
+      snd_default: 'Boing', snd_scale: 'Scale Climb', snd_piano: 'Piano', snd_cosmos: 'Cosmos',
+      snd_star: 'Twinkle Star', snd_bell: 'School Bell', snd_butterfly: 'Butterfly', snd_bear: 'Three Bears',
+      snd_plane: 'Airplane', snd_same: 'All Flowers', snd_bird: 'Mountain Bunny', snd_birthday: 'Happy Birthday',
+      snd_marimba: 'Marimba', snd_chip: 'Chiptune', snd_drum: 'Drum', snd_firework: 'Firework', snd_droplet: 'Droplet',
       sndInfo_default: 'Default bounce sound.',
       sndInfo_scale: 'Each combo plays Do-Re-Mi — 3 octaves up and down.',
       sndInfo_piano: 'Warm piano tone.',
+      sndInfo_cosmos: 'Dreamy space synth with long tail.',
       sndInfo_star: 'Combos play Twinkle Twinkle Little Star.',
       sndInfo_bell: 'Combos play the School Bell tune.',
+      sndInfo_butterfly: 'Combos play "Butterfly".',
+      sndInfo_bear: 'Combos play "Three Bears".',
+      sndInfo_plane: 'Combos play "Airplane".',
+      sndInfo_same: 'Combos play "All Flowers".',
+      sndInfo_bird: 'Combos play "Mountain Bunny".',
+      sndInfo_birthday: 'Combos play "Happy Birthday".',
       sndInfo_marimba: 'Clear marimba notes, rising with combo.',
       sndInfo_chip: 'Retro 8-bit square wave.',
+      sndInfo_drum: 'Percussive noise hits.',
+      sndInfo_firework: 'Firework sounds, chord burst every 10 combos.',
       sndInfo_droplet: 'Crisp water-drop sound.',
       hudScore: 'Score',
       hudCombo: 'Combo',
@@ -1396,14 +1418,23 @@
 
   // 사운드 테마 카탈로그(공 튕길 때 소리). default 무료. price 0 = 보유 기본.
   const SOUNDS = [
-    { id: 'default', nameKey: 'snd_default', price: 0, emoji: '🔔' },
-    { id: 'scale',   nameKey: 'snd_scale',   price: 150, emoji: '🎵' }, // 도레미 왕복
-    { id: 'piano',   nameKey: 'snd_piano',   price: 120, emoji: '🎹' },
-    { id: 'star',    nameKey: 'snd_star',    price: 110, emoji: '⭐' }, // 반짝반짝 작은별
-    { id: 'bell',    nameKey: 'snd_bell',    price: 110, emoji: '🔔' }, // 학교종
-    { id: 'marimba', nameKey: 'snd_marimba', price: 100, emoji: '🪵' },
-    { id: 'chip',    nameKey: 'snd_chip',    price: 100, emoji: '👾' },
-    { id: 'droplet', nameKey: 'snd_droplet', price: 90,  emoji: '💧' },
+    { id: 'default',  nameKey: 'snd_default',  price: 0,   emoji: '🔔' },
+    { id: 'scale',    nameKey: 'snd_scale',    price: 150, emoji: '🎵' }, // 도레미 왕복
+    { id: 'piano',    nameKey: 'snd_piano',    price: 120, emoji: '🎹' },
+    { id: 'cosmos',   nameKey: 'snd_cosmos',   price: 130, emoji: '🌌' }, // 우주
+    { id: 'star',     nameKey: 'snd_star',     price: 110, emoji: '⭐' }, // 반짝반짝 작은별
+    { id: 'bell',     nameKey: 'snd_bell',     price: 110, emoji: '🔔' }, // 학교종
+    { id: 'butterfly',nameKey: 'snd_butterfly',price: 110, emoji: '🦋' }, // 나비야
+    { id: 'bear',     nameKey: 'snd_bear',     price: 110, emoji: '🐻' }, // 곰 세마리
+    { id: 'plane',    nameKey: 'snd_plane',    price: 110, emoji: '✈️' }, // 비행기
+    { id: 'same',     nameKey: 'snd_same',     price: 110, emoji: '🌸' }, // 모두 다 꽃이야
+    { id: 'bird',     nameKey: 'snd_bird',     price: 110, emoji: '🐰' }, // 산토끼
+    { id: 'birthday', nameKey: 'snd_birthday', price: 110, emoji: '🎂' }, // 생일 축하
+    { id: 'marimba',  nameKey: 'snd_marimba',  price: 100, emoji: '🪵' },
+    { id: 'chip',     nameKey: 'snd_chip',     price: 100, emoji: '👾' },
+    { id: 'drum',     nameKey: 'snd_drum',     price: 90,  emoji: '🥁' }, // 타악기
+    { id: 'firework', nameKey: 'snd_firework', price: 120, emoji: '🎆' }, // 불꽃놀이
+    { id: 'droplet',  nameKey: 'snd_droplet',  price: 90,  emoji: '💧' },
   ];
 
   const STICK_PRICE = 50;
@@ -1602,27 +1633,105 @@
     return p <= span ? p : period - p;
   }
   // 동요 멜로디(반음, C4 기준). 콤보 순서대로 한 음씩.
-  const RHYME_STAR = [0,0,7,7,9,9,7, 5,5,4,4,2,2,0, 7,7,5,5,4,4,2, 7,7,5,5,4,4,2, 0,0,7,7,9,9,7, 5,5,4,4,2,2,0]; // 반짝반짝 작은별
-  const RHYME_BELL = [7,7,9,9,7,7,5, 7,7,5,5,4, 7,7,9,9,7,7,5, 7,5,4,5,2]; // 학교종
+  // 동요 멜로디(반음, C4=0 기준). 콤보 순서대로 한 음씩 연주. 끝나면 처음부터 반복.
+  const RHYMES = {
+    star:   [0,0,7,7,9,9,7, 5,5,4,4,2,2,0, 7,7,5,5,4,4,2, 7,7,5,5,4,4,2, 0,0,7,7,9,9,7, 5,5,4,4,2,2,0], // 반짝반짝 작은별
+    bell:   [7,7,9,9,7,7,5, 7,7,5,5,4, 7,7,9,9,7,7,5, 7,5,4,5,2],                                       // 학교종
+    butterfly: [7,5,5, 5,4,4, 4,5,7, 7,5,5, 5,5,4,4, 4,5,4,2, 0,2,4,5, 7,7,7,7, 7,5,5,5, 5,4,4, 4,5,7], // 나비야
+    bear:   [0,2,4,0, 0,2,4,0, 4,5,7, 4,5,7, 7,9,7,5,4,0, 7,9,7,5,4,0, 0,-5,0, 0,-5,0],                  // 곰 세마리
+    plane:  [4,2,0, 2,4,4,4, 2,2,2, 4,7,7, 4,2,0, 2,4,4,4, 2,2,4,2, 0],                                  // 비행기
+    same:   [5,4,2,0, 2,4,5,5,5, 5,4,2,4, 2,0,0,0, 5,4,2,0, 2,4,5,5,5, 5,4,2,4, 0],                       // 모두 다 꽃이야(똑같아요 톤)
+    bird:   [0,2,4,5,7, 7,5,4,2,0, 0,2,4,5,7, 7,5,4,2,0, 7,7,5,4,2, 7,7,5,4,2, 0,2,4,5,7,5,4,2,0],        // 산토끼/올라가내려가
+    birthday: [0,0,2,0,5,4, 0,0,2,0,7,5, 0,0,12,9,5,4,2, 10,10,9,5,7,5],                                  // 생일 축하
+  };
+  // 합성 테마 옵션(음계 인덱싱 계열)
+  const SYNTH_THEMES = {
+    scale:   { type: 'triangle', oct: 0.3, rel: 0.2 },
+    chip:    { type: 'square', rel: 0.14, peak: 0.32 },
+    marimba: { type: 'triangle', oct: 0.5, rel: 0.18, peak: 0.4 },
+  };
   function playBounceSound(b, pan) {
     const sound = store.equipped.sound || 'default';
     const c = combo;            // 현재 콤보(0부터)
-    if (sound === 'scale') {
-      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'triangle', oct: 0.3, rel: 0.2 });
-    } else if (sound === 'piano') {
+    if (sound === 'piano') {
       synthNote(bouncePitch(b), pan, { type: 'triangle', oct: 0.25, lp: 2600, rel: 0.45, peak: 0.42 });
-    } else if (sound === 'chip') {
-      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'square', rel: 0.14, peak: 0.32 });
-    } else if (sound === 'marimba') {
-      synthNote(scaleFreq(climbDegree(c)), pan, { type: 'triangle', oct: 0.5, rel: 0.18, peak: 0.4 });
     } else if (sound === 'droplet') {
       dropletNote(pan);
-    } else if (sound === 'star') {
-      synthNote(semi(RHYME_STAR[c % RHYME_STAR.length]), pan, { type: 'triangle', oct: 0.3, rel: 0.26 });
-    } else if (sound === 'bell') {
-      synthNote(semi(RHYME_BELL[c % RHYME_BELL.length]), pan, { type: 'triangle', oct: 0.3, rel: 0.26 });
+    } else if (sound === 'cosmos') {
+      cosmosNote(scaleFreq(climbDegree(c) % 14), pan);
+    } else if (sound === 'drum') {
+      drumNote(c, pan);
+    } else if (sound === 'firework') {
+      fireworkNote(c, pan);
+    } else if (SYNTH_THEMES[sound]) {
+      synthNote(scaleFreq(climbDegree(c)), pan, SYNTH_THEMES[sound]);
+    } else if (RHYMES[sound]) {
+      const mel = RHYMES[sound];
+      synthNote(semi(mel[c % mel.length]), pan, { type: 'triangle', oct: 0.3, rel: 0.26 });
     } else {
       playBoing(bouncePitch(b), pan);   // 기본 보잉
+    }
+  }
+  // 우주: 디튠 코러스 + 롱 릴리즈
+  function cosmosNote(freq, pan) {
+    if (!actx || muted) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    const t = actx.currentTime;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    const lp = actx.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(700, t); lp.frequency.exponentialRampToValueAtTime(2600, t + 0.3);
+    const o1 = actx.createOscillator(); o1.type = 'sine'; o1.frequency.value = freq;
+    const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 1.005;
+    o1.connect(lp); o2.connect(lp); lp.connect(g);
+    let tail = g; const panner = actx.createStereoPanner ? actx.createStereoPanner() : null;
+    if (panner) { panner.pan.value = Math.max(-1, Math.min(1, pan || 0)); g.connect(panner); tail = panner; }
+    tail.connect(masterGain);
+    o1.start(t); o1.stop(t + 0.65); o2.start(t); o2.stop(t + 0.65);
+    cleanupOnEnd(o1, panner ? [o2, lp, g, panner] : [o2, lp, g]);
+  }
+  // 타악기: 필터드 노이즈 버스트 + 짧은 바디(콤보로 음높이 미세 상승)
+  function drumNote(c, pan) {
+    if (!actx || muted) return;
+    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    const t = actx.currentTime;
+    const len = Math.floor(actx.sampleRate * 0.18);
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass';
+    const base = 180 + (c % 8) * 40;
+    bp.frequency.setValueAtTime(base, t); bp.frequency.exponentialRampToValueAtTime(base * 6, t + 0.12);
+    bp.Q.value = 1.2;
+    const g = actx.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    src.connect(bp); bp.connect(g); g.connect(masterGain); src.start(t);
+    cleanupOnEnd(src, [bp, g]);
+    // 바디(짧은 sine)
+    const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = base * 0.8;
+    const g2 = actx.createGain(); g2.gain.setValueAtTime(0.4, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g2); g2.connect(masterGain); o.start(t); o.stop(t + 0.14);
+    cleanupOnEnd(o, [g2]);
+  }
+  // 불꽃놀이(소모품 firework): square+노이즈 폭죽, 콤보 10단위마다 화음 폭발
+  function fireworkNote(c, pan) {
+    synthNote(scaleFreq(climbDegree(c)), pan, { type: 'square', rel: 0.16, peak: 0.3 });
+    // 노이즈 톡
+    if (actx && !muted) {
+      const t = actx.currentTime;
+      const len = Math.floor(actx.sampleRate * 0.08);
+      const buf = actx.createBuffer(1, len, actx.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = actx.createBufferSource(); src.buffer = buf;
+      const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+      const g = actx.createGain(); g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      src.connect(hp); hp.connect(g); g.connect(masterGain); src.start(t);
+      cleanupOnEnd(src, [hp, g]);
+    }
+    // 콤보 10단위 화음 폭발
+    if (c > 0 && c % 10 === 0) {
+      [0, 4, 7].forEach((iv) => synthNote(scaleFreq(climbDegree(c)) * Math.pow(2, iv / 12), pan, { type: 'square', rel: 0.4, peak: 0.22 }));
     }
   }
   function dropletNote(pan) {
