@@ -1453,9 +1453,11 @@
       masterGain.connect(actx.destination);
       loadSfx();
     }
-    if (actx.state === 'suspended') { try { actx.resume(); } catch (e) { /* 무시 */ } }
-    // iOS/모바일 잠금 해제: 무음 버퍼를 한 번 재생해야 오디오가 열린다(제스처 내 1회).
-    if (!audioUnlocked) {
+    const wasSuspended = (actx.state === 'suspended');
+    if (wasSuspended) { try { actx.resume(); } catch (e) { /* 무시 */ } }
+    // iOS/모바일 잠금 해제: 무음 버퍼 1회 재생로 오디오를 연다.
+    // 화면 전환 등으로 다시 suspended 되면 그때마다 재실행해야 깨어난다(한 번이면 부족).
+    if (!audioUnlocked || wasSuspended) {
       try {
         const buf = actx.createBuffer(1, 1, 22050);
         const src = actx.createBufferSource();
@@ -1759,16 +1761,16 @@
     // 곡이 있는 테마(음계·동요·신스 음계)는 8음 정도를 0.18초 간격으로
     const melodic = (id === 'scale' || id === 'chip' || id === 'marimba' || id === 'cosmos' ||
                      id === 'firework' || id === 'drum' || (typeof RHYMES !== 'undefined' && RHYMES[id]));
+    // 첫 음은 살짝 지연(화면 복귀 직후 resume 완료 시간 확보 → 첫 클릭도 들림)
+    const lead = 60;
     if (melodic) {
       const notes = 8;
       for (let i = 0; i < notes; i++) {
-        previewTimers.push(setTimeout(() => playBounceSound(fakeBall, 0, i), i * 200));
+        previewTimers.push(setTimeout(() => playBounceSound(fakeBall, 0, i), lead + i * 200));
       }
-      // 복원은 마지막 음 뒤에
-      previewTimers.push(setTimeout(() => { store.equipped.sound = saved; }, notes * 200 + 50));
+      previewTimers.push(setTimeout(() => { store.equipped.sound = saved; }, lead + notes * 200 + 50));
     } else {
-      playBounceSound(fakeBall, 0, 0);
-      store.equipped.sound = saved;
+      previewTimers.push(setTimeout(() => { playBounceSound(fakeBall, 0, 0); store.equipped.sound = saved; }, lead));
     }
   }
 
