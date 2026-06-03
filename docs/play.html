@@ -1072,6 +1072,19 @@
   if (resumeStage < 1) resumeStage = 1;
   function saveResumeStage() { try { localStorage.setItem('pung_resume_stage', String(resumeStage)); } catch (e) { /* 프라이빗 모드 */ } }
 
+  // 끝쪽 빈 사진 슬롯(''/null) 제거 + 해당 owned·equipped 정리. 인덱스 안 깨지게 맨 끝부터.
+  function cleanTrailingEmptyPhotos(arrKey, ownKey, prefix, eqKey) {
+    const arr = store[arrKey];
+    if (!Array.isArray(arr)) return;
+    while (arr.length && !arr[arr.length - 1]) {
+      const i = arr.length - 1;
+      arr.pop();
+      const id = prefix + i;
+      const oi = store.owned[ownKey].indexOf(id);
+      if (oi >= 0) store.owned[ownKey].splice(oi, 1);
+      if (store.equipped[eqKey] === id) store.equipped[eqKey] = 'default';
+    }
+  }
   function loadStore() {
     try { coins = parseInt(localStorage.getItem('pung_coins') || '0', 10) || 0; } catch (e) { coins = 0; }
     if (coins < 0) coins = 0;
@@ -1110,6 +1123,9 @@
         const pgi = store.owned.bgs.indexOf('photo');
         if (pgi >= 0) { store.owned.bgs.splice(pgi, 1); if (store.photoBgs.length) store.owned.bgs.push('photo:0'); }
         if (store.equipped.bg === 'photo') store.equipped.bg = store.photoBgs.length ? 'photo:0' : 'default';
+        // 이전 버그로 생긴 끝쪽 빈 사진 슬롯 정리(인덱스 안 깨지게 맨 끝만)
+        cleanTrailingEmptyPhotos('photoBalls', 'skins', 'photoBall:', 'skin');
+        cleanTrailingEmptyPhotos('photoBgs', 'bgs', 'photo:', 'bg');
       }
     } catch (e) { store = JSON.parse(JSON.stringify(STORE_DEFAULT)); }
   }
@@ -3062,8 +3078,10 @@
     return card;
   }
 
-  let pendingPhotoBallIdx = -1;   // 사진 선택 대기 중인 사진 공 슬롯
-  let pendingPhotoBgIdx = -1;     // 사진 선택 대기 중인 사진 배경 슬롯
+  let pendingPhotoBallIdx = -1;   // 사진 선택 대기 중인 사진 공 슬롯(기존 슬롯 교체용)
+  let pendingPhotoBgIdx = -1;     // 사진 선택 대기 중인 사진 배경 슬롯(기존 슬롯 교체용)
+  let pendingPhotoBallNew = false;// 신규 구매(사진 확정 시 결제·슬롯 생성)
+  let pendingPhotoBgNew = false;
   function renderSkinGrid() {
     elGridBalls.innerHTML = '';
     // 일반 스킨
@@ -3106,15 +3124,11 @@
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('＋', cw / 2, ch / 2);
     });
     const addCard = buildCard(addPrev, t('skin_photo'), false, false, PHOTO_BALL_PRICE, () => {
-      if (!spend(PHOTO_BALL_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
-      const idx = (store.photoBalls || []).length;
-      store.photoBalls.push('');                 // 빈 슬롯 추가
-      store.owned.skins.push('photoBall:' + idx);
-      saveStore();
-      equip('skin', 'photoBall:' + idx);
-      pendingPhotoBallIdx = idx;                 // 사진 선택 대기
+      if (getCoins() < PHOTO_BALL_PRICE) { showShopMsg(t('notEnoughCoins')); return; }
+      // 결제·슬롯 생성은 사진이 실제로 확정될 때(onPhotoBallSelected). 파일 취소해도 아무 일 없음.
+      pendingPhotoBallIdx = -1;                   // 신규(아직 슬롯 없음)
+      pendingPhotoBallNew = true;
       elPhotoBallInput.click();
-      renderShop();
     });
     elGridBalls.appendChild(addCard);
   }
@@ -3155,15 +3169,11 @@
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('＋', cw / 2, ch / 2);
     });
     const addCard = buildCard(addPrev, t('bg_photo'), false, false, PHOTO_BG_PRICE, () => {
-      if (!spend(PHOTO_BG_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
-      const idx = (store.photoBgs || []).length;
-      store.photoBgs.push('');
-      store.owned.bgs.push('photo:' + idx);
-      saveStore();
-      store.equipped.bg = 'photo:' + idx; saveStore();
-      pendingPhotoBgIdx = idx;
+      if (getCoins() < PHOTO_BG_PRICE) { showShopMsg(t('notEnoughCoins')); return; }
+      // 결제·슬롯 생성은 사진 확정 시(onPhotoSelected). 파일 취소해도 아무 일 없음.
+      pendingPhotoBgIdx = -1;
+      pendingPhotoBgNew = true;
       elPhotoInput.click();
-      renderShop();
     });
     elGridBgs.appendChild(addCard);
   }
@@ -3564,56 +3574,56 @@
 
   // 배경 사진: 화면비 사각형으로 크롭 → store.photoBgs[pendingPhotoBgIdx]
   function onPhotoSelected(e) {
-    const idx = pendingPhotoBgIdx;
+    const idx = pendingPhotoBgIdx, isNew = pendingPhotoBgNew;
+    pendingPhotoBgIdx = -1; pendingPhotoBgNew = false;
     loadFileToEditor(e, 'rect', W / H, (dataUrl) => {
-      if (idx < 0 || idx >= store.photoBgs.length) { pendingPhotoBgIdx = -1; return; }
-      store.photoBgs[idx] = dataUrl;
+      if (!dataUrl) { showShopMsg(t('photoTooBig')); return; }
+      let slot = idx;
+      if (isNew) {                               // 신규 구매: 이제 결제·슬롯 생성
+        if (!spend(PHOTO_BG_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
+        slot = store.photoBgs.length;
+        store.photoBgs.push(dataUrl);
+        store.owned.bgs.push('photo:' + slot);
+        store.equipped.bg = 'photo:' + slot;
+      } else {                                   // 기존 슬롯 교체
+        if (slot < 0 || slot >= store.photoBgs.length) return;
+        store.photoBgs[slot] = dataUrl;
+      }
       saveStore();
-      if (!store.photoBgs[idx]) { showShopMsg(t('photoTooBig')); }
-      else { showShopMsg(t('ballPhotoApplied')); }
+      showShopMsg(t('ballPhotoApplied'));
       loadPhotoImages();
-      pendingPhotoBgIdx = -1;
       renderShop();
     });
   }
 
-  // 공 사진: 원형(정사각) 크롭 → store.photoBalls[pendingPhotoBallIdx]
+  // 공 사진: 원형(정사각) 크롭 → store.photoBalls
   function onPhotoBallSelected(e) {
-    const idx = pendingPhotoBallIdx;
+    const idx = pendingPhotoBallIdx, isNew = pendingPhotoBallNew;
+    pendingPhotoBallIdx = -1; pendingPhotoBallNew = false;
     loadFileToEditor(e, 'circle', 1, (dataUrl) => {
-      if (idx < 0 || idx >= store.photoBalls.length) { pendingPhotoBallIdx = -1; return; }
-      store.photoBalls[idx] = dataUrl;
+      if (!dataUrl) { showShopMsg(t('photoTooBig')); return; }
+      let slot = idx;
+      if (isNew) {                               // 신규 구매: 이제 결제·슬롯 생성
+        if (!spend(PHOTO_BALL_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
+        slot = store.photoBalls.length;
+        store.photoBalls.push(dataUrl);
+        store.owned.skins.push('photoBall:' + slot);
+        equip('skin', 'photoBall:' + slot);
+      } else {                                   // 기존 슬롯 교체
+        if (slot < 0 || slot >= store.photoBalls.length) return;
+        store.photoBalls[slot] = dataUrl;
+      }
       saveStore();
-      if (!store.photoBalls[idx]) { showShopMsg(t('photoTooBig')); }
-      else { showShopMsg(t('ballPhotoApplied')); }
+      showShopMsg(t('ballPhotoApplied'));
       loadPhotoBallImages();
-      pendingPhotoBallIdx = -1;
       renderShop();
       renderSkinDock();
     });
   }
-  // 크롭 취소 시: 방금 추가한 빈 슬롯이면 정리(공·배경)
+  // 크롭 취소 시: 신규 구매면 아직 결제 전이라 정리할 게 없음. 플래그만 클리어.
   function cancelPendingPhotoBall() {
-    let bidx = pendingPhotoBallIdx;
-    if (bidx >= 0 && store.photoBalls[bidx] === '') {
-      store.photoBalls.splice(bidx, 1);
-      const sid = 'photoBall:' + bidx;
-      const si = store.owned.skins.indexOf(sid);
-      if (si >= 0) store.owned.skins.splice(si, 1);
-      if (store.equipped.skin === sid) store.equipped.skin = 'default';
-      saveStore(); loadPhotoBallImages(); renderShop(); renderSkinDock();
-    }
-    pendingPhotoBallIdx = -1;
-    let gidx = pendingPhotoBgIdx;
-    if (gidx >= 0 && store.photoBgs[gidx] === '') {
-      store.photoBgs.splice(gidx, 1);
-      const gid = 'photo:' + gidx;
-      const gi = store.owned.bgs.indexOf(gid);
-      if (gi >= 0) store.owned.bgs.splice(gi, 1);
-      if (store.equipped.bg === gid) store.equipped.bg = 'default';
-      saveStore(); loadPhotoImages(); renderShop();
-    }
-    pendingPhotoBgIdx = -1;
+    pendingPhotoBallIdx = -1; pendingPhotoBallNew = false;
+    pendingPhotoBgIdx = -1; pendingPhotoBgNew = false;
   }
 
   // ================= 스틱 트레이 (게임 중) =================
