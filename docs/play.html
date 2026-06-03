@@ -1650,9 +1650,9 @@
     chip:    { type: 'square', rel: 0.14, peak: 0.32 },
     marimba: { type: 'triangle', oct: 0.5, rel: 0.18, peak: 0.4 },
   };
-  function playBounceSound(b, pan) {
+  function playBounceSound(b, pan, comboOverride) {
     const sound = store.equipped.sound || 'default';
-    const c = combo;            // 현재 콤보(0부터)
+    const c = (comboOverride == null) ? combo : comboOverride; // 미리듣기는 콤보 지정
     if (sound === 'piano') {
       synthNote(bouncePitch(b), pan, { type: 'triangle', oct: 0.25, lp: 2600, rel: 0.45, peak: 0.42 });
     } else if (sound === 'droplet') {
@@ -1749,11 +1749,27 @@
     cleanupOnEnd(o, panner ? [g, panner] : [g]);
   }
   // 상점 미리듣기용: 테마 한 음 재생(콤보 0 가정)
+  // 멜로디 계열은 여러 음을, 단일음 계열은 한 음을 짧게 연주해 들려준다.
+  let previewTimers = [];
   function previewSound(id) {
+    ensureAudio();
+    previewTimers.forEach(clearTimeout); previewTimers = [];
     const saved = store.equipped.sound; store.equipped.sound = id;
     const fakeBall = { vy: 600 };
-    playBounceSound(fakeBall, 0);
-    store.equipped.sound = saved;
+    // 곡이 있는 테마(음계·동요·신스 음계)는 8음 정도를 0.18초 간격으로
+    const melodic = (id === 'scale' || id === 'chip' || id === 'marimba' || id === 'cosmos' ||
+                     id === 'firework' || id === 'drum' || (typeof RHYMES !== 'undefined' && RHYMES[id]));
+    if (melodic) {
+      const notes = 8;
+      for (let i = 0; i < notes; i++) {
+        previewTimers.push(setTimeout(() => playBounceSound(fakeBall, 0, i), i * 200));
+      }
+      // 복원은 마지막 음 뒤에
+      previewTimers.push(setTimeout(() => { store.equipped.sound = saved; }, notes * 200 + 50));
+    } else {
+      playBounceSound(fakeBall, 0, 0);
+      store.equipped.sound = saved;
+    }
   }
 
   // 터짐: 길고 시원한 화이트노이즈 스윕 + 상승 스파클 (0.6~0.9s 테일)
