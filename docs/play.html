@@ -3123,15 +3123,15 @@
   // photo는 업로드 자체는 무료, 배경으로 적용할 때 코인 차감.
   function renderBgGrid() {
     elGridBgs.innerHTML = '';
-    // 코드 배경(소모품: 적용 시 코인 차감, default 무료)
+    // 코드 배경: 스킨·사운드와 동일 — 한 번 사면 보유, 무료로 장착/전환
     for (const bg of BGS) {
+      const owned = bg.price <= 0 || isOwned('bgs', bg.id);
       const equipped = store.equipped.bg === bg.id;
-      const free = bg.price <= 0;
       const prev = makePreviewCanvas((c, cw, ch) => miniBgPreview(c, bg.id, cw, ch));
-      const card = buildBgCard(prev, t(bg.nameKey), equipped, free, bg.price, () => {
+      const card = buildCard(prev, t(bg.nameKey), owned, equipped, bg.price, () => {
         if (equipped) return;
-        if (free) { store.equipped.bg = bg.id; saveStore(); }
-        else { if (!spend(bg.price)) { showShopMsg(t('notEnoughCoins')); return; } store.equipped.bg = bg.id; saveStore(); }
+        if (owned) { store.equipped.bg = bg.id; saveStore(); }
+        else { if (!buy('bgs', bg.id, bg.price)) { showShopMsg(t('notEnoughCoins')); return; } store.equipped.bg = bg.id; saveStore(); }
         renderShop();
       });
       elGridBgs.appendChild(card);
@@ -3141,7 +3141,7 @@
       const id = 'photo:' + idx;
       const equipped = store.equipped.bg === id;
       const prev = makePreviewCanvas((c, cw, ch) => miniBgPreview(c, id, cw, ch));
-      const card = buildBgCard(prev, t('bg_photo') + ' ' + (idx + 1), equipped, true, 0, () => {
+      const card = buildCard(prev, t('bg_photo') + ' ' + (idx + 1), true, equipped, 0, () => {
         if (!equipped) { store.equipped.bg = id; saveStore(); }
         else { pendingPhotoBgIdx = idx; elPhotoInput.click(); return; } // 장착 상태에서 다시 누르면 교체
         renderShop();
@@ -3154,7 +3154,7 @@
       c.fillStyle = '#9CA3AF'; c.font = '700 ' + Math.round(cw * 0.28) + 'px ' + COL_FONT;
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('＋', cw / 2, ch / 2);
     });
-    const addCard = buildBgCard(addPrev, t('bg_photo'), false, false, PHOTO_BG_PRICE, () => {
+    const addCard = buildCard(addPrev, t('bg_photo'), false, false, PHOTO_BG_PRICE, () => {
       if (!spend(PHOTO_BG_PRICE)) { showShopMsg(t('notEnoughCoins')); return; }
       const idx = (store.photoBgs || []).length;
       store.photoBgs.push('');
@@ -3168,28 +3168,6 @@
     elGridBgs.appendChild(addCard);
   }
 
-  // 배경 전용 카드: 소모품 규칙(적용 시 코인 차감). 버튼 라벨은 "적용 (가격 🪙)" / 무료는 "적용".
-  function buildBgCard(prevCanvas, name, equipped, free, price, onAction) {
-    const card = document.createElement('div');
-    card.className = 'shop-card';
-    card.appendChild(prevCanvas);
-    const nm = document.createElement('div'); nm.className = 'shop-name'; nm.textContent = name;
-    card.appendChild(nm);
-    const btn = document.createElement('button');
-    btn.className = 'btn ' + (equipped ? 'btn-ghost' : 'btn-primary');
-    btn.style.padding = '8px 14px'; btn.style.fontSize = '14px'; btn.style.minHeight = '36px';
-    if (equipped) {
-      btn.textContent = t('applied'); btn.disabled = true;
-    } else if (free) {
-      btn.textContent = t('apply');
-    } else {
-      btn.textContent = t('applyPrice', { p: price });
-      if (getCoins() < price) { btn.disabled = true; btn.classList.add('btn-disabled'); }
-    }
-    btn.addEventListener('click', onAction);
-    card.appendChild(btn);
-    return card;
-  }
 
   function miniBgPreview(c, id, cw, ch) {
     if (id === 'default') { c.fillStyle = '#1B1D21'; c.fillRect(0, 0, cw, ch); }
@@ -3239,7 +3217,7 @@
       // 구매/장착 버튼
       const btn = document.createElement('button');
       btn.style.padding = '6px 12px'; btn.style.fontSize = '13px'; btn.style.minHeight = '34px';
-      if (equipped) { btn.className = 'btn btn-ghost'; btn.textContent = t('applied'); btn.disabled = true; }
+      if (equipped) { btn.className = 'btn btn-ghost'; btn.textContent = t('equipped'); btn.disabled = true; }
       else if (owned) { btn.className = 'btn btn-primary'; btn.textContent = t('equip');
         btn.addEventListener('click', () => { store.equipped.sound = snd.id; saveStore(); renderShop(); }); }
       else { btn.className = 'btn btn-primary'; btn.textContent = snd.price + ' 🪙';
