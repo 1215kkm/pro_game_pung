@@ -944,9 +944,10 @@
     }
   }
 
-  // 판 → 공 개수: 1~5판=1, 6~10판=2, …, 30판=6.
+  // 판 → 공 개수: 1~5판=1, 6~10판=2, …, 30판=6. 마스터모드 포함 최대 8개.
+  const MAX_BALLS = 8;
   function ballsForStage(stage) {
-    return Math.floor((Math.max(1, stage) - 1) / 5) + 1;
+    return Math.min(MAX_BALLS, Math.floor((Math.max(1, stage) - 1) / 5) + 1);
   }
 
   // 판 → 요구 튕김 횟수: 1판 5회 → 30판 20회, 마스터(31+) 상한 30회까지 증가.
